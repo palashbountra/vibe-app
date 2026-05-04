@@ -1,0 +1,59 @@
+# ─── Node / npm ───────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+*.tgz
+
+# ─── Expo / React Native ──────────────────────────────────────────────────────
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/android/
+mobile/ios/
+
+# ─── AWS CDK ──────────────────────────────────────────────────────────────────
+cdk.out/
+cdk.context.json
+infra/dist/
+
+# ─── TypeScript build output ──────────────────────────────────────────────────
+dist/
+build/
+*.js.map
+*.d.ts
+!infra/bin/*.d.ts
+
+# ─── Environment / Secrets (NEVER commit these) ───────────────────────────────
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.*
+secrets.json
+*.pem
+*.key
+credentials.json
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+Thumbs.db
+._*
+
+# ─── Editors ──────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/

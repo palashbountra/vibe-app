@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Vibe",
+    "slug": "vibe-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "vibeapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0D0D"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vibeapp.vibe",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Vibe uses your photo library for profile photos.",
+        "NSCameraUsageDescription": "Vibe uses your camera to take profile photos.",
+        "NSLocationWhenInUseUsageDescription": "Vibe uses your location to find people near you."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0D0D0D"
+      },
+      "package": "com.vibeapp.vibe",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      ["expo-location", { "locationWhenInUsePermission": "Allow Vibe to find matches near you." }],
+      ["expo-image-picker", { "photosPermission": "Allow Vibe to access your photos." }]
+    ],
+    "experiments": { "typedRoutes": true },
+    "extra": {
+      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" },
+      "apiBaseUrl": "https://api.vibeapp.io",
+      "wsBaseUrl": "wss://ws.vibeapp.io",
+      "cognitoUserPoolId": "REPLACE_WITH_COGNITO_USER_POOL_ID",
+      "cognitoClientId": "REPLACE_WITH_COGNITO_CLIENT_ID",
+      "spotifyClientId": "REPLACE_WITH_SPOTIFY_CLIENT_ID"
+    }
+  }
+}
