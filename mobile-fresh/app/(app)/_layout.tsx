@@ -1,9 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/theme';
 
-type IconProps = { color: string; size: number };
+type IconProps = { color: string; size: number; focused: boolean };
+
+function TabIcon({ name, focused, color, size }: { name: any } & IconProps) {
+  return <Ionicons name={focused ? name : `${name}-outline` as any} size={size} color={color} />;
+}
 
 export default function AppLayout() {
   return (
@@ -14,8 +18,9 @@ export default function AppLayout() {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 0 : 8,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textTertiary,
@@ -30,38 +35,32 @@ export default function AppLayout() {
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color, size }: IconProps) => (
-            <Ionicons name="compass" size={size} color={color} />
-          ),
+          tabBarIcon: (props: IconProps) => <TabIcon name="compass" {...props} />,
         }}
       />
       <Tabs.Screen
-        name="matches"
+        name="communities"
         options={{
-          title: 'Matches',
-          tabBarIcon: ({ color, size }: IconProps) => (
-            <Ionicons name="heart" size={size} color={color} />
-          ),
+          title: 'Communities',
+          tabBarIcon: (props: IconProps) => <TabIcon name="people" {...props} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, size }: IconProps) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
-          ),
+          tabBarIcon: (props: IconProps) => <TabIcon name="chatbubbles" {...props} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }: IconProps) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
+          tabBarIcon: (props: IconProps) => <TabIcon name="person" {...props} />,
         }}
       />
+      {/* hide old matches tab */}
+      <Tabs.Screen name="matches" options={{ href: null }} />
     </Tabs>
   );
 }
