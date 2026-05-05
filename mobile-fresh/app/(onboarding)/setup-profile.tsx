@@ -8,11 +8,14 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/lib/supabase';
 
 const AVATAR_COLORS = ['#8B5CF6', '#EC4899', '#1DB954', '#3B82F6', '#F59E0B', '#EF4444'];
 
@@ -22,6 +25,7 @@ export default function SetupProfileScreen() {
   const [username, setUsername] = useState('');
   const [age, setAge] = useState('');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [loading, setLoading] = useState(false);
   const usernameRef = useRef<TextInput>(null);
   const ageRef = useRef<TextInput>(null);
 
@@ -30,17 +34,42 @@ export default function SetupProfileScreen() {
   const isValid = displayName.trim().length >= 2 && username.trim().length >= 3 && ageValid;
   const cleanUsername = username.replace(/[^a-z0-9_.]/gi, '').toLowerCase();
 
-  const handleContinue = () => {
-    if (!isValid) return;
-    setUser({
-      id: user?.id ?? `local_${Date.now()}`,
-      displayName: displayName.trim(),
-      email: user?.email,
-      username: cleanUsername,
-      avatarColor,
-      age: ageNum,
-    });
-    router.replace('/(onboarding)/setup-profile-details');
+  const handleContinue = async () => {
+    if (!isValid || loading) return;
+    setLoading(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+
+      const { error } = await supabase.from('profiles').upsert({
+        id: authUser.id,
+        username: cleanUsername,
+        display_name: displayName.trim(),
+        avatar_color: avatarColor,
+        age: ageNum,
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          Alert.alert('Username taken', 'That username is already in use. Try another.');
+          return;
+        }
+        throw error;
+      }
+
+      setUser({
+        id: authUser.id,
+        displayName: displayName.trim(),
+        username: cleanUsername,
+        avatarColor,
+        age: ageNum,
+      });
+      router.replace('/(onboarding)/setup-profile-details');
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -148,12 +177,15 @@ export default function SetupProfileScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.continueBtn, !isValid && styles.continueBtnDisabled]}
+            style={[styles.continueBtn, (!isValid || loading) && styles.continueBtnDisabled]}
             onPress={handleContinue}
             activeOpacity={0.85}
-            disabled={!isValid}
+            disabled={!isValid || loading}
           >
-            <Text style={styles.continueBtnText}>Continue</Text>
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.continueBtnText}>Continue</Text>
+            }
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

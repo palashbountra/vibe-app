@@ -1,8 +1,9 @@
 /**
  * Matching service — discover feed + connection actions.
- * Returns mock data until Supabase is deployed.
+ * Fetches real data from Supabase. Compatibility is computed client-side
+ * until the recommendation model (Sprint 4) is ready.
  */
-import { api } from './apiClient';
+import { supabase } from '@/lib/supabase';
 import type { UserProfile } from './userService';
 
 export interface FeedCandidate extends UserProfile {
@@ -18,193 +19,261 @@ export interface Connection {
   unreadCount: number;
 }
 
-export const MOCK_FEED: FeedCandidate[] = [
-  {
-    id: 'user-2',
-    displayName: 'Aanya',
-    username: 'aanya.wav',
-    age: 21,
-    gender: 'Woman',
-    pronouns: 'she/her',
-    bio: 'Always got AirPods in, always discovering something new.',
-    avatarColor: '#EC4899',
-    height: "5'4\"",
-    job: 'UX Designer',
-    school: 'NID Ahmedabad',
-    location: 'Delhi, IN',
-    photos: [],
-    topArtists: ['Frank Ocean', 'SZA', 'Jhene Aiko'],
-    topGenres: ['neo-soul', 'r&b', 'alternative'],
-    currentTrack: { title: 'Saturn', artist: 'SZA', albumArt: '' },
-    prompts: [
-      { question: 'The song that changed my life...', answer: 'Pyramids by Frank Ocean. I was never the same after.' },
-      { question: "We'll vibe if you listen to...", answer: 'Anything that feels like a late night drive with the windows down.' },
-      { question: 'My unpopular music take is...', answer: 'Interludes are the best part of any album. Fight me.' },
-    ],
-    profileComplete: 95,
-    compatibilityScore: 91,
-    compatibilityBreakdown: { genre: 0.94, artist: 0.88, audio: 0.91 },
-  },
-  {
-    id: 'user-3',
-    displayName: 'Rohan',
-    username: 'rohanbeats',
-    age: 23,
-    gender: 'Man',
-    pronouns: 'he/him',
-    bio: 'Concert photographer. I shoot the artists you stream.',
-    avatarColor: '#3B82F6',
-    height: "6'0\"",
-    job: 'Photographer',
-    school: 'Symbiosis Pune',
-    location: 'Bangalore, IN',
-    photos: [],
-    topArtists: ['Tyler, the Creator', 'Earl Sweatshirt', 'Vince Staples'],
-    topGenres: ['hip-hop', 'alternative rap', 'lo-fi'],
-    currentTrack: { title: 'SORRY NOT SORRY', artist: 'Tyler, the Creator', albumArt: '' },
-    prompts: [
-      { question: "My go-to album when I'm sad is...", answer: "IGOR by Tyler. It hits different every time." },
-      { question: 'My unpopular music take is...', answer: 'Kendrick peaked with good kid, m.A.A.d city. DAMN. was good not great.' },
-      { question: 'The last concert I went to was...', answer: 'Nucleya at Lollapalooza Mumbai. Crowd was unreal.' },
-    ],
-    profileComplete: 90,
-    compatibilityScore: 84,
-    compatibilityBreakdown: { genre: 0.82, artist: 0.90, audio: 0.78 },
-  },
-  {
-    id: 'user-4',
-    displayName: 'Priya',
-    username: 'priya.keys',
-    age: 22,
-    gender: 'Woman',
-    pronouns: 'she/they',
-    bio: 'Jazz piano student, indie everything else. Searching for people who appreciate a good chord change.',
-    avatarColor: '#F59E0B',
-    height: "5'5\"",
-    job: 'Music Student',
-    school: 'KM Music Conservatory',
-    location: 'Mumbai, IN',
-    photos: [],
-    topArtists: ['Norah Jones', 'Bon Iver', 'Phoebe Bridgers'],
-    topGenres: ['jazz', 'indie folk', 'ambient'],
-    currentTrack: { title: 'Holocene', artist: 'Bon Iver', albumArt: '' },
-    prompts: [
-      { question: "My go-to album when I'm sad is...", answer: "Blue by Joni Mitchell. A masterpiece every time." },
-      { question: "We'll vibe if you listen to...", answer: 'Music that sounds like it was made in a forest or a rainy café.' },
-      { question: 'My guilty pleasure song is...', answer: 'Mr. Brightside. Do not judge me.' },
-    ],
-    profileComplete: 88,
-    compatibilityScore: 78,
-    compatibilityBreakdown: { genre: 0.72, artist: 0.80, audio: 0.82 },
-  },
-  {
-    id: 'user-5',
-    displayName: 'Arjun',
-    username: 'arjun.hz',
-    age: 24,
-    gender: 'Man',
-    pronouns: 'he/him',
-    bio: 'Electronic music producer. Making beats that no one asked for but everyone needs.',
-    avatarColor: '#10B981',
-    height: "5'11\"",
-    job: 'Music Producer',
-    school: 'IIT Bombay',
-    location: 'Pune, IN',
-    photos: [],
-    topArtists: ['Four Tet', 'Jon Hopkins', 'Floating Points'],
-    topGenres: ['electronic', 'ambient', 'techno'],
-    currentTrack: { title: 'Cascade', artist: 'Four Tet', albumArt: '' },
-    prompts: [
-      { question: 'My music taste can be described as...', answer: 'What happens when a computer dreams of nature.' },
-      { question: 'The last concert I went to was...', answer: 'Jon Hopkins at Boiler Room Delhi. Changed my life.' },
-      { question: 'I go crazy for...', answer: 'A perfectly placed bass drop at 3am.' },
-    ],
-    profileComplete: 80,
-    compatibilityScore: 73,
-    compatibilityBreakdown: { genre: 0.70, artist: 0.75, audio: 0.74 },
-  },
-  {
-    id: 'user-6',
-    displayName: 'Meera',
-    username: 'meeravibes',
-    age: 20,
-    gender: 'Woman',
-    pronouns: 'she/her',
-    bio: 'Discovering 3 new songs every day. Certified music nerd.',
-    avatarColor: '#8B5CF6',
-    height: "5'3\"",
-    job: 'College Student',
-    school: 'Ashoka University',
-    location: 'Delhi, IN',
-    photos: [],
-    topArtists: ['Childish Gambino', 'Kali Uchis', 'Daniel Caesar'],
-    topGenres: ['r&b', 'funk', 'soul'],
-    currentTrack: { title: 'After the Storm', artist: 'Kali Uchis', albumArt: '' },
-    prompts: [
-      { question: "I'll judge you if you don't like...", answer: 'Awaken, My Love! by Childish Gambino. A whole journey.' },
-      { question: 'My simple pleasures...', answer: 'Finding a song that perfectly describes exactly how I feel right now.' },
-    ],
-    profileComplete: 72,
-    compatibilityScore: 68,
-    compatibilityBreakdown: { genre: 0.65, artist: 0.72, audio: 0.67 },
-  },
-  {
-    id: 'user-7',
-    displayName: 'Kabir',
-    username: 'kabir.loud',
-    age: 25,
-    gender: 'Man',
-    pronouns: 'he/him',
-    bio: 'Bassist. Loud music, quiet person. Venue recommendations welcome.',
-    avatarColor: '#EF4444',
-    height: "6'1\"",
-    job: 'Software Engineer',
-    school: 'BITS Pilani',
-    location: 'Hyderabad, IN',
-    photos: [],
-    topArtists: ['Arctic Monkeys', 'The Strokes', 'Radiohead'],
-    topGenres: ['indie rock', 'alternative', 'post-punk'],
-    currentTrack: { title: 'R U Mine?', artist: 'Arctic Monkeys', albumArt: '' },
-    prompts: [
-      { question: 'My most controversial opinion is...', answer: 'OK Computer is overrated. The Bends is the real Radiohead peak.' },
-      { question: 'The last concert I went to was...', answer: 'Arctic Monkeys in Mumbai 2023. Worth every rupee.' },
-      { question: "I'm convinced that...", answer: 'Bass players are the most underappreciated musicians alive.' },
-    ],
-    profileComplete: 85,
-    compatibilityScore: 62,
-    compatibilityBreakdown: { genre: 0.60, artist: 0.65, audio: 0.61 },
-  },
-];
+/** Simple client-side compatibility: genre + artist overlap */
+function computeScore(
+  myGenres: string[],
+  myArtists: string[],
+  theirGenres: string[],
+  theirArtists: string[]
+): { score: number; breakdown: { genre: number; artist: number; audio: number } } {
+  const genreSet = new Set(myGenres.map(g => g.toLowerCase()));
+  const artistSet = new Set(myArtists.map(a => a.toLowerCase()));
 
-export const MOCK_CONNECTIONS: Connection[] = [
-  {
-    connectionId: 'conn-1',
-    connectedAt: new Date(Date.now() - 86400000).toISOString(),
-    user: MOCK_FEED[0],
-    lastMessage: { text: 'omg you like Frank Ocean too??', sentAt: new Date(Date.now() - 3600000).toISOString() },
-    unreadCount: 1,
-  },
-  {
-    connectionId: 'conn-2',
-    connectedAt: new Date(Date.now() - 172800000).toISOString(),
-    user: MOCK_FEED[1],
-    lastMessage: { text: 'have you heard the new Tyler album?', sentAt: new Date(Date.now() - 7200000).toISOString() },
-    unreadCount: 0,
-  },
-];
+  const genreOverlap = theirGenres.filter(g => genreSet.has(g.toLowerCase())).length;
+  const artistOverlap = theirArtists.filter(a => artistSet.has(a.toLowerCase())).length;
+
+  const genreScore = myGenres.length ? genreOverlap / Math.max(myGenres.length, theirGenres.length) : 0;
+  const artistScore = myArtists.length ? artistOverlap / Math.max(myArtists.length, theirArtists.length) : 0;
+  // audio features TBD — placeholder until recommendation model
+  const audioScore = (genreScore + artistScore) / 2;
+
+  const total = Math.round((genreScore * 0.5 + artistScore * 0.35 + audioScore * 0.15) * 100);
+  return {
+    score: Math.max(total, 10), // floor at 10 so no one shows 0%
+    breakdown: {
+      genre: Math.round(genreScore * 100) / 100,
+      artist: Math.round(artistScore * 100) / 100,
+      audio: Math.round(audioScore * 100) / 100,
+    },
+  };
+}
 
 export const matchingService = {
   getFeed: async (): Promise<FeedCandidate[]> => {
-    // TODO: return (await api.get<FeedCandidate[]>('/matching/feed')).data ?? [];
-    return MOCK_FEED;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Load my own music taste for scoring
+    const [myArtistsRes, myGenresRes] = await Promise.all([
+      supabase.from('top_artists').select('artist_name').eq('user_id', user.id).order('rank').limit(10),
+      supabase.from('top_genres').select('genre').eq('user_id', user.id).order('rank').limit(10),
+    ]);
+    const myArtists = myArtistsRes.data?.map(a => a.artist_name) ?? [];
+    const myGenres = myGenresRes.data?.map(g => g.genre) ?? [];
+
+    // Fetch other profiles (exclude self and already-connected)
+    const { data: connectedRes } = await supabase
+      .from('connections')
+      .select('recipient_id, requester_id')
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+
+    const connectedIds = new Set<string>([user.id]);
+    connectedRes?.forEach(c => {
+      connectedIds.add(c.requester_id);
+      connectedIds.add(c.recipient_id);
+    });
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .not('id', 'in', `(${[...connectedIds].join(',')})`);
+
+    if (!profiles || profiles.length === 0) return [];
+
+    // Batch-fetch related data for all profiles
+    const ids = profiles.map(p => p.id);
+
+    const [photosRes, artistsRes, genresRes, tracksRes, promptsRes] = await Promise.all([
+      supabase.from('photos').select('user_id, url, "order"').in('user_id', ids).order('order'),
+      supabase.from('top_artists').select('user_id, artist_name, rank').in('user_id', ids).order('rank'),
+      supabase.from('top_genres').select('user_id, genre, rank').in('user_id', ids).order('rank'),
+      supabase.from('current_tracks').select('*').in('user_id', ids),
+      supabase.from('prompts').select('user_id, question, answer, "order"').in('user_id', ids).order('order'),
+    ]);
+
+    // Index by user_id
+    const photosByUser: Record<string, string[]> = {};
+    photosRes.data?.forEach(ph => {
+      if (!photosByUser[ph.user_id]) photosByUser[ph.user_id] = [];
+      photosByUser[ph.user_id].push(ph.url);
+    });
+
+    const artistsByUser: Record<string, string[]> = {};
+    artistsRes.data?.forEach(a => {
+      if (!artistsByUser[a.user_id]) artistsByUser[a.user_id] = [];
+      artistsByUser[a.user_id].push(a.artist_name);
+    });
+
+    const genresByUser: Record<string, string[]> = {};
+    genresRes.data?.forEach(g => {
+      if (!genresByUser[g.user_id]) genresByUser[g.user_id] = [];
+      genresByUser[g.user_id].push(g.genre);
+    });
+
+    const trackByUser: Record<string, { title: string; artist: string; albumArt: string }> = {};
+    tracksRes.data?.forEach(t => {
+      trackByUser[t.user_id] = { title: t.title, artist: t.artist, albumArt: t.album_art };
+    });
+
+    const promptsByUser: Record<string, { question: string; answer: string }[]> = {};
+    promptsRes.data?.forEach(pr => {
+      if (!promptsByUser[pr.user_id]) promptsByUser[pr.user_id] = [];
+      promptsByUser[pr.user_id].push({ question: pr.question, answer: pr.answer });
+    });
+
+    const feed: FeedCandidate[] = profiles.map(p => {
+      const theirArtists = artistsByUser[p.id] ?? [];
+      const theirGenres = genresByUser[p.id] ?? [];
+      const { score, breakdown } = computeScore(myGenres, myArtists, theirGenres, theirArtists);
+
+      return {
+        id: p.id,
+        displayName: p.display_name,
+        username: p.username,
+        age: p.age ?? undefined,
+        gender: p.gender ?? undefined,
+        pronouns: p.pronouns ?? undefined,
+        bio: p.bio ?? undefined,
+        avatarColor: p.avatar_color,
+        height: p.height ?? undefined,
+        job: p.job ?? undefined,
+        school: p.school ?? undefined,
+        location: p.location ?? undefined,
+        photos: photosByUser[p.id] ?? [],
+        topArtists: theirArtists.slice(0, 5),
+        topGenres: theirGenres.slice(0, 5),
+        currentTrack: trackByUser[p.id] ?? null,
+        prompts: promptsByUser[p.id] ?? [],
+        profileComplete: p.profile_complete,
+        compatibilityScore: score,
+        compatibilityBreakdown: breakdown,
+      };
+    });
+
+    // Sort by compatibility score descending
+    return feed.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
   },
-  sendConnectionRequest: async (targetUserId: string, compliment?: { promptQuestion: string; message: string }): Promise<{ sent: boolean }> => {
-    // TODO: api.post('/connections/request', { targetUserId, compliment })
-    console.log(`[mock] connection request to ${targetUserId}`, compliment);
-    return { sent: true };
+
+  sendConnectionRequest: async (
+    targetUserId: string,
+    compliment?: { promptQuestion: string; message: string }
+  ): Promise<{ sent: boolean }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { sent: false };
+
+    const { error } = await supabase.from('connections').insert({
+      requester_id: user.id,
+      recipient_id: targetUserId,
+      compliment_prompt: compliment?.promptQuestion ?? null,
+      compliment_message: compliment?.message ?? null,
+    });
+
+    return { sent: !error };
   },
+
   getConnections: async (): Promise<Connection[]> => {
-    // TODO: return (await api.get<Connection[]>('/connections')).data ?? [];
-    return MOCK_CONNECTIONS;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: conns } = await supabase
+      .from('connections')
+      .select('*')
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .eq('status', 'accepted')
+      .order('created_at', { ascending: false });
+
+    if (!conns || conns.length === 0) return [];
+
+    // For each connection, get the other person's profile + last message
+    const results: (Connection | null)[] = await Promise.all(conns.map(async (conn) => {
+      const otherId = conn.requester_id === user.id ? conn.recipient_id : conn.requester_id;
+
+      const [profileRes, photosRes, artistsRes, genresRes, trackRes, lastMsgRes, unreadRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', otherId).single(),
+        supabase.from('photos').select('url').eq('user_id', otherId).order('order').limit(1),
+        supabase.from('top_artists').select('artist_name').eq('user_id', otherId).order('rank').limit(3),
+        supabase.from('top_genres').select('genre').eq('user_id', otherId).order('rank').limit(3),
+        supabase.from('current_tracks').select('*').eq('user_id', otherId).single(),
+        supabase.from('messages').select('content, created_at').eq('connection_id', conn.id).order('created_at', { ascending: false }).limit(1),
+        supabase.from('messages').select('id', { count: 'exact' }).eq('connection_id', conn.id).is('read_at', null).neq('sender_id', user.id),
+      ]);
+
+      const p = profileRes.data;
+      if (!p) return null;
+
+      return {
+        connectionId: conn.id,
+        connectedAt: conn.created_at,
+        user: {
+          id: p.id,
+          displayName: p.display_name,
+          username: p.username,
+          avatarColor: p.avatar_color,
+          photos: photosRes.data?.map(ph => ph.url) ?? [],
+          topArtists: artistsRes.data?.map(a => a.artist_name) ?? [],
+          topGenres: genresRes.data?.map(g => g.genre) ?? [],
+          currentTrack: trackRes.data
+            ? { title: trackRes.data.title, artist: trackRes.data.artist, albumArt: trackRes.data.album_art }
+            : null,
+          profileComplete: p.profile_complete,
+        } as UserProfile,
+        lastMessage: lastMsgRes.data?.[0]
+          ? { text: lastMsgRes.data[0].content, sentAt: lastMsgRes.data[0].created_at }
+          : undefined,
+        unreadCount: unreadRes.count ?? 0,
+      };
+    }));
+
+    return results.filter((r): r is Connection => r !== null);
+  },
+
+  respondToRequest: async (connectionId: string, accept: boolean): Promise<void> => {
+    await supabase
+      .from('connections')
+      .update({ status: accept ? 'accepted' : 'declined' })
+      .eq('id', connectionId);
+  },
+
+  getPendingRequests: async (): Promise<Connection[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: pending } = await supabase
+      .from('connections')
+      .select('*')
+      .eq('recipient_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (!pending || pending.length === 0) return [];
+
+    const results: (Connection | null)[] = await Promise.all(pending.map(async (conn) => {
+      const profileRes = await supabase.from('profiles').select('*').eq('id', conn.requester_id).single();
+      const p = profileRes.data;
+      if (!p) return null;
+
+      return {
+        connectionId: conn.id,
+        connectedAt: conn.created_at,
+        user: {
+          id: p.id,
+          displayName: p.display_name,
+          username: p.username,
+          avatarColor: p.avatar_color,
+          photos: [],
+          topArtists: [],
+          topGenres: [],
+          currentTrack: null,
+          profileComplete: p.profile_complete,
+        } as UserProfile,
+        unreadCount: 0,
+      };
+    }));
+
+    return results.filter((r): r is Connection => r !== null);
   },
 };
+
+// Keep MOCK_FEED exported so existing screens don't break during transition
+export const MOCK_FEED: FeedCandidate[] = [];
+export const MOCK_CONNECTIONS: Connection[] = [];

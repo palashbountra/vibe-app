@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/lib/supabase';
 
 const OTP_LENGTH = 6;
 
@@ -12,8 +13,40 @@ export default function VerifyScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
-  const { setAuthenticated } = useAuthStore();
+  const { setAuthenticated, setAccessToken } = useAuthStore();
+
+  const verifyOtp = async (code: string) => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phone ?? '',
+        token: code,
+        type: 'sms',
+      });
+
+      if (error) {
+        Alert.alert('Invalid code', error.message);
+        setOtp(Array(OTP_LENGTH).fill(''));
+        inputs.current[0]?.focus();
+        setActiveIndex(0);
+        return;
+      }
+
+      if (data.session) {
+        setAuthenticated(true);
+        setAccessToken(data.session.access_token);
+      }
+      // index.tsx redirect chain will take over from here
+      router.replace('/');
+    } catch (e) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInput = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, '').slice(-1);
@@ -27,8 +60,7 @@ export default function VerifyScreen() {
     }
 
     if (newOtp.every((d) => d !== '') && digit) {
-      setAuthenticated(true);
-      router.replace('/(onboarding)/setup-profile');
+      verifyOtp(newOtp.join(''));
     }
   };
 
@@ -36,6 +68,15 @@ export default function VerifyScreen() {
     if (key === 'Backspace' && !otp[index] && index > 0) {
       inputs.current[index - 1]?.focus();
       setActiveIndex(index - 1);
+    }
+  };
+
+  const resend = async () => {
+    const { error } = await supabase.auth.signInWithOtp({ phone: phone ?? '' });
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      Alert.alert('Sent!', 'A new code has been sent.');
     }
   };
 
@@ -58,104 +99,54 @@ export default function VerifyScreen() {
           {otp.map((digit, i) => (
             <TextInput
               key={i}
-              ref={(ref) => {
-                inputs.current[i] = ref;
-              }}
-              style={[
-                styles.otpCell,
-                activeIndex === i && styles.otpCellActive,
-                digit ? styles.otpCellFilled : undefined,
-              ]}
+              ref={(el) => { inputs.current[i] = el; }}
+              style={[styles.otpBox, activeIndex === i && styles.otpBoxActive]}
               value={digit}
-              onChangeText={(text) => handleInput(text, i)}
+              onChangeText={(t) => handleInput(t, i)}
               onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
               onFocus={() => setActiveIndex(i)}
               keyboardType="number-pad"
               maxLength={1}
               textAlign="center"
-              caretHidden
+              selectionColor={Colors.primary}
             />
           ))}
         </View>
 
-        <View style={styles.resendRow}>
+        {loading && (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.lg }} />
+        )}
+
+        <TouchableOpacity style={styles.resend} onPress={resend}>
           <Text style={styles.resendText}>Didn't get it? </Text>
-          <TouchableOpacity>
-            <Text style={styles.resendLink}>Resend code</Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={[styles.resendText, { color: Colors.primary, fontWeight: '600' }]}>Resend</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.lg,
-  },
-  back: {
-    marginTop: Spacing.md,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-    paddingTop: Spacing.xl,
-  },
-  header: {
-    marginBottom: Spacing.xxl,
-  },
-  title: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    lineHeight: 26,
-  },
-  phone: {
-    color: Colors.textPrimary,
-    fontWeight: '600',
-  },
-  otpRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  otpCell: {
-    flex: 1,
-    height: 60,
-    backgroundColor: Colors.surface,
+  container: { flex: 1, backgroundColor: Colors.background },
+  back: { padding: Spacing.md },
+  content: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl },
+  header: { marginBottom: Spacing.xxl },
+  title: { ...Typography.h1, color: Colors.textPrimary, marginBottom: Spacing.sm },
+  subtitle: { ...Typography.body, color: Colors.textSecondary, lineHeight: 24 },
+  phone: { color: Colors.textPrimary, fontWeight: '600' },
+  otpRow: { flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
+  otpBox: {
+    width: 48,
+    height: 58,
     borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    color: Colors.textPrimary,
     fontSize: 24,
     fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  otpCellActive: {
-    borderColor: Colors.primary,
-  },
-  otpCellFilled: {
-    borderColor: Colors.primary,
-    backgroundColor: `${Colors.primary}18`,
-  },
-  resendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  resendText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  resendLink: {
-    ...Typography.caption,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
+  otpBoxActive: { borderColor: Colors.primary },
+  resend: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.xl },
+  resendText: { ...Typography.body, color: Colors.textSecondary },
 });

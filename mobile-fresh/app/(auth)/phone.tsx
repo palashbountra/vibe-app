@@ -7,20 +7,30 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { Button } from '@/components/common/Button';
+import { supabase } from '@/lib/supabase';
 
 export default function PhoneScreen() {
   const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    if (phone.length >= 10) {
-      router.push({ pathname: '/(auth)/verify', params: { phone: `+1${phone}` } });
+  const handleContinue = async () => {
+    if (phone.length < 10) return;
+    const fullPhone = `+91${phone}`; // default India — swap country code picker later
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+    setLoading(false);
+    if (error) {
+      Alert.alert('Error', error.message);
+      return;
     }
+    router.push({ pathname: '/(auth)/verify', params: { phone: fullPhone } });
   };
 
   return (
@@ -58,9 +68,9 @@ export default function PhoneScreen() {
         </View>
 
         <Button
-          label="Send Code"
+          label={loading ? 'Sending...' : 'Send Code'}
           onPress={handleContinue}
-          disabled={phone.length < 10}
+          disabled={phone.length < 10 || loading}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

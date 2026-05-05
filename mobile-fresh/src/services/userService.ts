@@ -1,24 +1,24 @@
 /**
- * User service — profile CRUD + photo upload.
- * Swap api calls for real endpoints when Supabase is live.
+ * User service — profile CRUD + photo management.
+ * All calls go to Supabase. Mock data removed.
  */
-import { api } from './apiClient';
+import { supabase } from '@/lib/supabase';
 import type { Prompt } from '@/store/authStore';
 
 export interface UserProfile {
   id: string;
   displayName: string;
   username?: string;
-  age: number;
+  age?: number;
   gender?: string;
   pronouns?: string;
-  bio: string;
+  bio?: string;
   avatarColor?: string;
   height?: string;
   job?: string;
   school?: string;
+  location?: string;
   photos: string[];
-  location: string;
   topArtists: string[];
   topGenres: string[];
   currentTrack: { title: string; artist: string; albumArt: string } | null;
@@ -27,41 +27,121 @@ export interface UserProfile {
   compatibilityScore?: number;
 }
 
-const MOCK_PROFILE: UserProfile = {
-  id: 'mock-user-1',
-  displayName: 'Palash',
-  username: 'palash.wav',
-  age: 22,
-  gender: 'Man',
-  pronouns: 'he/him',
-  bio: 'Finding my frequency',
-  avatarColor: '#8B5CF6',
-  height: "5'10\"",
-  job: 'Student',
-  school: 'BITS Pilani',
-  photos: [],
-  location: 'Pilani, IN',
-  topArtists: ['Frank Ocean', 'Tyler, the Creator', 'BROCKHAMPTON'],
-  topGenres: ['neo-soul', 'hip-hop', 'alternative r&b'],
-  currentTrack: { title: 'Nights', artist: 'Frank Ocean', albumArt: '' },
-  prompts: [
-    { question: 'The song that changed my life...', answer: 'Nights by Frank Ocean. That beat switch.' },
-    { question: 'My unpopular music take is...', answer: 'Channel Orange > Blonde. There, I said it.' },
-  ],
-  profileComplete: 78,
-};
-
 export const userService = {
-  getMyProfile: async (): Promise<UserProfile> => {
-    // TODO: return (await api.get<UserProfile>('/users/me')).data!;
-    return MOCK_PROFILE;
+  getMyProfile: async (): Promise<UserProfile | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const [profileRes, photosRes, promptsRes, artistsRes, genresRes, trackRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('photos').select('url').eq('user_id', user.id).order('order'),
+      supabase.from('prompts').select('question, answer').eq('user_id', user.id).order('order'),
+      supabase.from('top_artists').select('artist_name').eq('user_id', user.id).order('rank').limit(5),
+      supabase.from('top_genres').select('genre').eq('user_id', user.id).order('rank').limit(5),
+      supabase.from('current_tracks').select('*').eq('user_id', user.id).single(),
+    ]);
+
+    if (!profileRes.data) return null;
+    const p = profileRes.data;
+
+    return {
+      id: p.id,
+      displayName: p.display_name,
+      username: p.username,
+      age: p.age ?? undefined,
+      gender: p.gender ?? undefined,
+      pronouns: p.pronouns ?? undefined,
+      bio: p.bio ?? undefined,
+      avatarColor: p.avatar_color,
+      height: p.height ?? undefined,
+      job: p.job ?? undefined,
+      school: p.school ?? undefined,
+      location: p.location ?? undefined,
+      photos: photosRes.data?.map(ph => ph.url) ?? [],
+      prompts: promptsRes.data ?? [],
+      topArtists: artistsRes.data?.map(a => a.artist_name) ?? [],
+      topGenres: genresRes.data?.map(g => g.genre) ?? [],
+      currentTrack: trackRes.data
+        ? { title: trackRes.data.title, artist: trackRes.data.artist, albumArt: trackRes.data.album_art }
+        : null,
+      profileComplete: p.profile_complete,
+    };
   },
-  updateProfile: async (data: Partial<UserProfile>): Promise<UserProfile> => {
-    // TODO: return (await api.put<UserProfile>('/users/me', data)).data!;
-    return { ...MOCK_PROFILE, ...data };
+
+  updateProfile: async (data: {
+    displayName?: string;
+    bio?: string;
+    gender?: string;
+    pronouns?: string;
+    height?: string;
+    job?: string;
+    school?: string;
+    location?: string;
+    profileComplete?: number;
+  }): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from('profiles').update({
+      display_name: data.displayName,
+      bio: data.bio,
+      gender: data.gender,
+      pronouns: data.pronouns,
+      height: data.height,
+      job: data.job,
+      school: data.school,
+      location: data.location,
+      profile_complete: data.profileComplete,
+    }).eq('id', user.id);
   },
-  uploadPhoto: async (_uri: string): Promise<string> => {
-    // TODO: multipart upload to /users/me/photo -> CDN URL
-    return _uri; // return local URI for now
+
+  savePrompts: async (prompts: Prompt[]): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Delete existing then re-insert
+    await supabase.from('prompts').delete().eq('user_id', user.id);
+    if (prompts.length === 0) return;
+
+    await supabase.from('prompts').insert(
+      prompts.map((p, i) => ({
+        user_id: user.id,
+        question: p.question,
+        answer: p.answer,
+        order: i,
+      }))
+    );
+  },
+
+  uploadPhoto: async (localUri: string, index: number): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const ext = localUri.split('.').pop() ?? 'jpg';
+    const path = `${user.id}/${index}_${Date.now()}.${ext}`;
+
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+
+    if (error) throw error;
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  savePhotos: async (urls: string[]): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from('photos').delete().eq('user_id', user.id);
+    if (urls.length === 0) return;
+
+    await supabase.from('photos').insert(
+      urls.map((url, i) => ({ user_id: user.id, url, order: i }))
+    );
   },
 };

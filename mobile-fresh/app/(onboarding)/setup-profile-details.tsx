@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Image, Modal, FlatList,
+  TextInput, Image, Modal, FlatList, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { useAuthStore, calcProfileCompletion, type Prompt } from '@/store/authStore';
+import { userService } from '@/services/userService';
 
 const GENDERS = ['Man', 'Woman', 'Non-binary', 'Prefer not to say'];
 const PRONOUNS = ['he/him', 'she/her', 'they/them', 'he/they', 'she/they', 'any'];
@@ -112,6 +113,7 @@ export default function SetupProfileDetailsScreen() {
   const [promptPickerIndex, setPromptPickerIndex] = useState<number | null>(null);
   const [heightPickerVisible, setHeightPickerVisible] = useState(false);
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const filledPhotos = photos.filter(Boolean) as string[];
   const completion = calcProfileCompletion({
@@ -160,21 +162,63 @@ export default function SetupProfileDetailsScreen() {
     setPromptPickerIndex(null);
   };
 
-  const handleContinue = () => {
-    setUser({
-      ...user!,
-      gender,
-      pronouns,
-      bio,
-      height,
-      job,
-      school,
-      location,
-      photos: filledPhotos,
-      prompts: prompts.filter(p => p.answer.trim()),
-      profileComplete: completion,
-    });
-    router.replace('/(onboarding)/connect-music');
+  const handleContinue = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      // Upload local photos to Supabase Storage, get CDN URLs
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < filledPhotos.length; i++) {
+        const localUri = filledPhotos[i];
+        // If already a CDN URL (reconnect case), keep as-is
+        if (localUri.startsWith('http')) {
+          uploadedUrls.push(localUri);
+        } else {
+          const url = await userService.uploadPhoto(localUri, i);
+          uploadedUrls.push(url);
+        }
+      }
+
+      const filteredPrompts = prompts.filter(p => p.answer.trim());
+
+      // Save profile fields + photos + prompts to Supabase in parallel
+      await Promise.all([
+        userService.updateProfile({
+          gender,
+          pronouns,
+          bio,
+          height,
+          job,
+          school,
+          location,
+          profileComplete: completion,
+        }),
+        userService.savePhotos(uploadedUrls),
+        userService.savePrompts(filteredPrompts),
+      ]);
+
+      // Update local store
+      setUser({
+        ...user!,
+        gender,
+        pronouns,
+        bio,
+        height,
+        job,
+        school,
+        location,
+        photos: uploadedUrls,
+        prompts: filteredPrompts,
+        profileComplete: completion,
+      });
+
+      router.replace('/(onboarding)/connect-music');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Something went wrong.';
+      Alert.alert('Error', msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -298,17 +342,25 @@ export default function SetupProfileDetailsScreen() {
 
         {/* Continue */}
         <TouchableOpacity
-          style={[styles.continueBtn, !canContinue && styles.continueBtnDisabled]}
+          style={[styles.continueBtn, (!canContinue || saving) && styles.continueBtnDisabled]}
           onPress={handleContinue}
-          disabled={!canContinue}
+          disabled={!canContinue || saving}
           activeOpacity={0.85}
         >
-          <Text style={styles.continueBtnText}>
-            {canContinue ? `Continue  (${completion}% complete)` : 'Add photo & gender to continue'}
-          </Text>
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.continueBtnText}>
+              {canContinue ? `Continue  (${completion}% complete)` : 'Add photo & gender to continue'}
+            </Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.skipBtn} onPress={() => router.replace('/(onboarding)/connect-music')}>
+        <TouchableOpacity
+          style={styles.skipBtn}
+          onPress={() => router.replace('/(onboarding)/connect-music')}
+          disabled={saving}
+        >
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
       </ScrollView>
