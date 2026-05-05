@@ -1,169 +1,143 @@
-# PROGRESS.md — Vibe App Sprint Tracker
+# Vibe — Development Progress Tracker
 
-> Updated at the end of every work session.
-> Both Claude instances read this to understand current state.
-
----
-
-## Current Status
-
-| Field | Value |
-|-------|-------|
-| Phase | Sprint 0 — Setup & Architecture |
-| Last updated | 2026-05-04 |
-| Mobile app boots | ✅ Yes (Expo Go) |
-| Backend deployed | ❌ Not yet — stubs + mock data only |
-| GitHub repo | ✅ Initialized — needs initial commit (see Session 2 notes) |
+> Update this file at the **start and end of every work session**.
+> This is the living sprint tracker — what's done, what's in flight, what's next.
 
 ---
 
-## Sprint 0 — Setup & Architecture
+## Product Concept (updated 2026-05-05)
 
-### Tasks
+**Vibe** is a **music social discovery app** — NOT a dating app.
 
-| # | Task | Status | Owner |
-|---|------|--------|-------|
-| 0.1 | Define tech stack | ✅ Done | Both |
-| 0.2 | Write ARCHITECTURE.md | ✅ Done | Claude |
-| 0.3 | Write FEATURES.md (v1 spec) | ✅ Done | Claude |
-| 0.4 | Write TECH_STACK.md | ✅ Done | Claude |
-| 0.5 | Scaffold mobile/ (Expo Router) | ✅ Done | Claude |
-| 0.6 | Write shared theme + Button component | ✅ Done | Claude |
-| 0.7 | Write auth screens (welcome, login, phone, verify) | ✅ Done | Claude |
-| 0.8 | Write onboarding screen (connect-music) | ✅ Done | Claude |
-| 0.9 | Write placeholder app screens (discover, matches, chat, profile) | ✅ Done | Claude |
-| 0.10 | Fix Metro bundler crash (metro.config.js + mmkv removal) | ✅ Done | Claude |
-| 0.11 | Fix babel.config.js (remove redundant module-resolver) | ✅ Done | Claude |
-| 0.12 | Write CDK infra — AuthStack, NotificationsStack | ✅ Done | Claude |
-| 0.13 | Write CDK infra — DatabaseStack, StorageStack, LambdaStack, ApiStack | ✅ Done | Claude |
-| 0.14 | Write backend shared types + first Lambda pattern | ✅ Done | Claude |
-| 0.15 | Write all Lambda stub handlers | ✅ Done | Claude |
-| 0.16 | Write mobile services layer (mock data) | ✅ Done | Claude |
-| 0.17 | Initialize git repo + write .gitignore | ✅ Done | Claude |
-| 0.18 | Initial commit + push to GitHub | ⏳ Pending — user runs commands |
+- Users connect Spotify/Apple Music
+- Discover nearby people with similar music taste
+- Connect (send/accept requests), not swipe-based dating
+- Create & join Communities (genre, artist, local scene)
+- Chat with connections
+- "Now Playing" live on profiles
+- Browse Popular Communities tab
 
-### Pending user action — GitHub push
-Run these in your terminal inside the `musicdateapp ` folder:
-```bash
-cd ~/Desktop/musicdateapp\ 
-git add .
-git commit -m "feat: Sprint 0 — project scaffold, architecture docs, mobile app foundation"
-# Create repo on github.com/new first (name: vibe-app, private, no README)
-git remote add origin https://github.com/YOUR_USERNAME/vibe-app.git
-git push -u origin main
+---
+
+## Sprint History
+
+### ✅ Sprint 0 — Setup & Architecture (complete)
+- [x] CLAUDE.md, ARCHITECTURE.md, FEATURES.md, TECH_STACK.md
+- [x] Full project folder structure scaffolded
+- [x] All 4 CDK infra stacks written (Auth, Database, Storage, Lambda, Api)
+- [x] Mobile services layer with mock data (apiClient, userService, matchingService, chatService, musicService)
+- [x] GitHub repo created and pushed
+- [x] Expo SDK upgrade from 51 → 54 (forced by Expo Go compatibility)
+- [x] Fresh project (`mobile-fresh/`) created to resolve irrecoverable stale node_modules
+- [x] App boots successfully on Expo Go (SDK 54, New Architecture)
+
+**Key SDK lessons learned:**
+- Expo Go SDK 54 = New Architecture forced on (bridgeless). Can't disable in Expo Go.
+- `react-native-reanimated` incompatible with Expo Go SDK 54 (worklets version mismatch). Use RN built-in `Animated`.
+- `expo-router` for SDK 54 = `~6.0.23` (not 4.x).
+- Source of truth for package versions: `bundledNativeModules.json` in expo package.
+
+---
+
+### ✅ Sprint 1 — Auth Flow (complete, 2026-05-05)
+
+**Goal:** Full end-to-end navigable auth flow on device.
+
+#### Completed
+- [x] `app/(auth)/welcome.tsx` — animated music bars, "vibe / connect through music" CTA
+- [x] `app/(auth)/login.tsx` — Apple Sign In (iOS), Google (mock), Phone option
+- [x] `app/(auth)/phone.tsx` — phone number input with country code
+- [x] `app/(auth)/verify.tsx` — 6-digit OTP, auto-advance, auto-submit on complete
+- [x] `app/(onboarding)/setup-profile.tsx` — display name + username + avatar color picker (NEW)
+- [x] `app/(onboarding)/connect-music.tsx` — Spotify / Apple Music / YouTube Music connect (mock)
+- [x] `app/(app)/` — tab bar with Discover, Connections, Messages, Profile (stub screens)
+- [x] `src/store/authStore.ts` — Zustand, User interface extended with `username` + `avatarColor`
+- [x] `src/components/common/Button.tsx` — reusable primary/secondary/ghost button
+- [x] `app/index.tsx` — smart redirect: welcome → setup-profile → discover
+- [x] Fixed `user?.name` → `user?.displayName` bug in profile.tsx
+- [x] Updated all language from "dating" → "social discovery"
+- [x] Updated CLAUDE.md + PROGRESS.md for product pivot
+
+#### Auth flow route map
+```
+welcome → login → [Apple/Google] → setup-profile → connect-music → /(app)/discover
+                → phone → verify → setup-profile → connect-music → /(app)/discover
 ```
 
 ---
 
-## Sprint 1 — Auth UI Polish (Up Next)
+### 🔜 Sprint 2 — Core Screens (next)
 
-| # | Task | Status |
-|---|------|--------|
-| 1.1 | Implement real phone OTP flow (Cognito SMS) | ⬜ Pending |
-| 1.2 | Implement Spotify OAuth (expo-auth-session PKCE) | ⬜ Pending |
-| 1.3 | Implement Apple Music OAuth (MusicKit) | ⬜ Pending |
-| 1.4 | Implement Apple Sign In (expo-apple-authentication) | ⬜ Pending |
-| 1.5 | Implement Google Sign In (expo-auth-session) | ⬜ Pending |
-| 1.6 | Persist auth tokens securely (expo-secure-store) | ⬜ Pending |
-| 1.7 | Wire auth screens to Cognito (replace mocks) | ⬜ Pending |
+**Goal:** Real, functional UI for all main app screens.
 
----
-
-## Sprint 2 — Discover / Swipe UI
-
-| # | Task | Status |
-|---|------|--------|
-| 2.1 | Build swipe card component with gesture (react-native-gesture-handler) | ⬜ Pending |
-| 2.2 | Animate swipe (react-native-reanimated) — like/pass indicators | ⬜ Pending |
-| 2.3 | Build compatibility score display on card | ⬜ Pending |
-| 2.4 | Build profile detail sheet (bottom sheet on tap) | ⬜ Pending |
-| 2.5 | Build match notification modal ("You matched!") | ⬜ Pending |
-| 2.6 | Wire discover screen to matchingService.getFeed() mock | ⬜ Pending |
-| 2.7 | Build matches list screen (wire to matchingService.getMatches()) | ⬜ Pending |
+#### Planned
+- [ ] `discover.tsx` — card stack of nearby users sorted by music compatibility
+  - User cards with avatar, name, username, top genres, compatibility %
+  - Tap to expand profile, "Connect" button
+  - Pull to refresh
+- [ ] `matches.tsx` → rename to `connections.tsx` — accepted connections list
+  - Pending incoming requests section
+  - Accepted connections with last active / now playing
+- [ ] `chat.tsx` — conversation list
+  - Per-connection thread (tap → full chat screen)
+  - Real-time via WebSocket (mock for now)
+- [ ] `profile.tsx` — full profile view
+  - Edit profile (name, username, bio)
+  - Connected music platforms with top artists
+  - "Now Playing" widget
+- [ ] Communities tab (replace or add to tab bar)
+  - Browse popular communities
+  - Join/create community
+- [ ] `app/(app)/_layout.tsx` — update tab bar labels to match new concept
 
 ---
 
-## Sprint 3 — Backend Deployment
+### 🔜 Sprint 3 — Backend Deployment
 
-| # | Task | Status |
-|---|------|--------|
-| 3.1 | Set up AWS account + IAM roles | ⬜ Pending |
-| 3.2 | `npm install` in infra/ | ⬜ Pending |
-| 3.3 | `cdk bootstrap` | ⬜ Pending |
-| 3.4 | Deploy stacks in order (Auth → DB → Storage → Lambda → Api) | ⬜ Pending |
-| 3.5 | Run DB migrations (Aurora schema) | ⬜ Pending |
-| 3.6 | Implement auth Lambda handlers (register, login) | ⬜ Pending |
-| 3.7 | Implement user Lambda handlers (getProfile, updateProfile) | ⬜ Pending |
-| 3.8 | Implement music sync Lambda (Spotify API integration) | ⬜ Pending |
-| 3.9 | Implement matching feed Lambda (compatibility scoring) | ⬜ Pending |
-| 3.10 | Swap mobile services from mock → real API calls | ⬜ Pending |
+- [ ] AWS account setup
+- [ ] CDK bootstrap + deploy all stacks
+- [ ] Lambda function stubs → real implementations
+- [ ] Cognito user pool wired to mobile
+- [ ] Aurora + DynamoDB seeded
+- [ ] API Gateway routes live
 
 ---
 
-## Sprint 4 — Chat + Now Playing
+### 🔜 Sprint 4 — Music OAuth
 
-| # | Task | Status |
-|---|------|--------|
-| 4.1 | Build chat screen (message bubbles, keyboard avoidance) | ⬜ Pending |
-| 4.2 | Implement WebSocket connection in chatService | ⬜ Pending |
-| 4.3 | Implement WS Lambda handlers (connect/disconnect/send) | ⬜ Pending |
-| 4.4 | Build "Now Playing" widget on profile cards | ⬜ Pending |
-| 4.5 | Poll now-playing endpoint every 30s | ⬜ Pending |
+- [ ] Spotify OAuth 2.0 PKCE flow (expo-auth-session)
+- [ ] Apple MusicKit integration
+- [ ] YouTube Music via Google OAuth
+- [ ] Ingest listening data → compatibility scoring
 
 ---
 
-## Sprint 5 — EAS + Store Submission
+### 🔜 Sprint 5 — EAS Build + Store Submission
 
-| # | Task | Status |
-|---|------|--------|
-| 5.1 | Set up EAS project (`eas init`) | ⬜ Pending |
-| 5.2 | Configure eas.json (dev/preview/prod profiles) | ⬜ Pending |
-| 5.3 | `eas build --platform all --profile preview` | ⬜ Pending |
-| 5.4 | Beta test via TestFlight + Google Play Internal | ⬜ Pending |
-| 5.5 | `eas submit` to App Store + Play Store | ⬜ Pending |
+- [ ] EAS project setup (`eas.json`)
+- [ ] iOS provisioning + TestFlight
+- [ ] Android keystore + Play Console internal testing
+- [ ] App Store listing draft
+
+---
+
+## Known Issues / Tech Debt
+
+| Issue | Severity | Notes |
+|-------|----------|-------|
+| `mobile/` old directory still in repo | Low | Delete once mobile-fresh is confirmed stable |
+| All services return mock data | Medium | Sprint 3 will swap |
+| Phone OTP not connected to real SMS | High | Cognito SMS flow in Sprint 3 |
+| Google Sign In not implemented | Medium | expo-auth-session in Sprint 4 |
+| Music platform connections are mock toggles | High | Real OAuth in Sprint 4 |
+| Communities feature not started | Medium | Sprint 2 |
 
 ---
 
 ## Session Log
 
-### Session 1 — 2026-05-02
-- Defined full product concept, team, tech stack
-- Wrote ARCHITECTURE.md, FEATURES.md, TECH_STACK.md, CLAUDE.md
-- Scaffolded mobile/ with Expo Router, all auth + onboarding screens
-- Wrote CDK AuthStack + NotificationsStack
-- Wrote backend shared types + first Lambda (register.ts)
-
-### Session 2 — 2026-05-04
-- Fixed Metro bundler crashes: created metro.config.js, removed react-native-mmkv, fixed babel.config.js
-- Initialized git repo, wrote .gitignore
-- Clarified deployment: **EAS not Vercel** for mobile
-- Wrote remaining CDK stacks: DatabaseStack (Aurora v2 + DynamoDB + VPC), StorageStack (S3 + CloudFront), LambdaStack (14 functions), ApiStack (REST + WebSocket)
-- Wrote all Lambda stub handlers (14 files)
-- Wrote mobile services layer: apiClient, userService, matchingService, chatService, musicService (all mock-backed, ready to swap to real API)
-- Updated authStore to include accessToken
-
----
-
-## Decisions Log
-
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| 2026-05-02 | React Native + Expo SDK 51 | Cross-platform, fast iteration, EAS deployment |
-| 2026-05-02 | AWS fully serverless | No idle server cost, scales to zero |
-| 2026-05-02 | Aurora PostgreSQL Serverless v2 | Relational for user/match data, scales with usage |
-| 2026-05-02 | DynamoDB for chat | High-throughput key-value, cheap at scale |
-| 2026-05-02 | Zustand for global state | Minimal boilerplate vs Redux |
-| 2026-05-02 | Expo Router (file-based) | Consistent with Next.js mental model, deep linking built in |
-| 2026-05-04 | EAS Build + Submit (not Vercel) | Vercel is web-only; EAS is the official Expo mobile deployment tool |
-| 2026-05-04 | Mock data in services layer | Unblock UI development while backend is being deployed |
-| 2026-05-04 | Services seam pattern | All API calls go through src/services/; swapping mock→real doesn't touch screens |
-| 2026-05-04 | metro.config.js for @ alias | Babel module-resolver conflicts with Expo SDK 51; metro alias is the right approach |
-
----
-
-## Blockers Log
-
-| Date | Blocker | Resolution |
-|------|---------|------------|
-| 2026-05-04 | Metro crash — missing metro.config.js | Created metro.config.js with getDefaultConfig + resolver.alias |
-| 2026-05-04 | Metro crash — react-native-mmkv (JSI) | Removed from package.json; use expo-secure-store for key-value in Expo Go |
+| Date | Session | Outcome |
+|------|---------|---------|
+| 2026-05-02 | Session 1 | Docs, architecture, CDK stacks, services layer |
+| 2026-05-02 | Session 2 | GitHub setup, SDK upgrade, fresh project, app booting |
+| 2026-05-05 | Session 3 | Product pivot to social discovery, Sprint 1 auth flow complete |
