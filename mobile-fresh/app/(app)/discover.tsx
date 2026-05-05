@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { UserCard } from '@/components/cards/UserCard';
+import { UserProfileModal } from '@/components/modals/UserProfileModal';
 import { matchingService, type FeedCandidate } from '@/services/matchingService';
 
 const FILTERS = ['All', 'Nearby', 'High Match', 'Online'];
@@ -21,6 +22,7 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [selectedUser, setSelectedUser] = useState<FeedCandidate | null>(null);
 
   const loadFeed = useCallback(async () => {
     const data = await matchingService.getFeed();
@@ -85,7 +87,11 @@ export default function DiscoverScreen() {
           data={filteredFeed}
           keyExtractor={(u) => u.id}
           renderItem={({ item }) => (
-            <UserCard user={item} onConnect={handleConnect} />
+            <UserCard
+              user={item}
+              onConnect={handleConnect}
+              onPress={() => setSelectedUser(item)}
+            />
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -115,6 +121,12 @@ export default function DiscoverScreen() {
           }
         />
       )}
+
+      <UserProfileModal
+        user={selectedUser}
+        visible={selectedUser !== null}
+        onClose={() => setSelectedUser(null)}
+      />
     </SafeAreaView>
   );
 }

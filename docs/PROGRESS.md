@@ -66,40 +66,41 @@ welcome → login → [Apple/Google] → setup-profile → connect-music → /(a
 
 ---
 
-### 🔜 Sprint 2 — Core Screens (next)
+### ✅ Sprint 2 — Core Screens (complete, 2026-05-05)
 
 **Goal:** Real, functional UI for all main app screens.
 
-#### Planned
-- [ ] `discover.tsx` — card stack of nearby users sorted by music compatibility
-  - User cards with avatar, name, username, top genres, compatibility %
-  - Tap to expand profile, "Connect" button
-  - Pull to refresh
-- [ ] `matches.tsx` → rename to `connections.tsx` — accepted connections list
-  - Pending incoming requests section
-  - Accepted connections with last active / now playing
-- [ ] `chat.tsx` — conversation list
-  - Per-connection thread (tap → full chat screen)
-  - Real-time via WebSocket (mock for now)
-- [ ] `profile.tsx` — full profile view
-  - Edit profile (name, username, bio)
-  - Connected music platforms with top artists
-  - "Now Playing" widget
-- [ ] Communities tab (replace or add to tab bar)
-  - Browse popular communities
-  - Join/create community
-- [ ] `app/(app)/_layout.tsx` — update tab bar labels to match new concept
+#### Completed
+- [x] `discover.tsx` — scrollable FlatList feed, filter chips (All/Nearby/High Match/Online), pull-to-refresh, loading + empty states
+- [x] `UserCard.tsx` — avatar/photo, name+age, @username, location, compat % badge, now playing strip, genre chips (color-coded), top artists, Connect button; **tappable → navigates to expanded profile**
+- [x] `app/(app)/user/[id].tsx` — full expanded profile: photo carousel with page dots, identity/meta section (pronouns, location, job, school, height), now playing card, prompt cards with **heart/compliment buttons**, sound profile (genres + ranked artists + compat breakdown bars), floating connect action bar, **compliment bottom sheet modal** (send message + connection request together)
+- [x] `communities.tsx` — search bar, "Your Communities" + "Popular" sections, join/leave toggle, 8 mock communities
+- [x] `chat.tsx` (Messages tab) — conversation list with colored avatar, online dot, last message preview, timestamp, unread badge, now playing italic text
+- [x] `profile.tsx` — scrollable profile: avatar, display name, @username, bio, edit button, now playing card, genre chips, top artists, connected platforms, sign out
+- [x] `app/(app)/_layout.tsx` — tab bar updated to Discover/Communities/Messages/Profile; old Matches tab hidden
+
+#### Pre-Sprint 3 additions (Hinge-style profile + expanded view)
+- [x] `setup-profile.tsx` — added mandatory **age field** (18+ validation), routes to setup-profile-details
+- [x] `setup-profile-details.tsx` — Hinge-style onboarding: 6-photo grid (expo-image-picker), gender picker modal (mandatory), pronouns chips, 200-char bio, 3 switchable music prompt cards (12 prompt options), height/job/school/location inputs, live **profile completion % bar** (color-coded), Continue gated on gender + 1 photo
+- [x] `app/index.tsx` — gender check added to redirect chain
+- [x] `app.json` — expo-image-picker plugin + photo/camera permissions
+- [x] `authStore.ts` — extended User interface: age, gender, pronouns, bio, height, job, school, location, photos[], prompts[], profileComplete%; added `calcProfileCompletion()` scoring function
+- [x] `matchingService.ts` — 6 rich mock users (Aanya, Rohan, Priya, Arjun, Meera, Kabir) with full profiles; `sendConnectionRequest` accepts optional compliment param
+- [x] `userService.ts` — renamed photoUrls→photos; extended UserProfile interface
+- [x] TypeScript: **zero errors** (`tsc --noEmit` clean)
+- [x] expo-router types patched for setup-profile-details + user/[id] dynamic route
 
 ---
 
-### 🔜 Sprint 3 — Backend Deployment
+### 🔜 Sprint 3 — Backend (Supabase)
 
-- [ ] AWS account setup
-- [ ] CDK bootstrap + deploy all stacks
-- [ ] Lambda function stubs → real implementations
-- [ ] Cognito user pool wired to mobile
-- [ ] Aurora + DynamoDB seeded
-- [ ] API Gateway routes live
+- [ ] Supabase project setup (free tier)
+- [ ] DB schema: users, connections, communities, messages tables
+- [ ] Supabase Auth (phone OTP / social providers)
+- [ ] Replace mock services with real Supabase calls
+- [ ] Spotify OAuth PKCE flow (expo-auth-session)
+- [ ] Photo upload → Supabase Storage → CDN URL
+- [ ] Real-time chat via Supabase Realtime (WebSocket)
 
 ---
 
@@ -130,7 +131,7 @@ welcome → login → [Apple/Google] → setup-profile → connect-music → /(a
 | Phone OTP not connected to real SMS | High | Cognito SMS flow in Sprint 3 |
 | Google Sign In not implemented | Medium | expo-auth-session in Sprint 4 |
 | Music platform connections are mock toggles | High | Real OAuth in Sprint 4 |
-| Communities feature not started | Medium | Sprint 2 |
+| Photo picker stores local URIs only | Medium | Sprint 3: upload to Supabase Storage |
 
 ---
 
@@ -141,3 +142,4 @@ welcome → login → [Apple/Google] → setup-profile → connect-music → /(a
 | 2026-05-02 | Session 1 | Docs, architecture, CDK stacks, services layer |
 | 2026-05-02 | Session 2 | GitHub setup, SDK upgrade, fresh project, app booting |
 | 2026-05-05 | Session 3 | Product pivot to social discovery, Sprint 1 auth flow complete |
+| 2026-05-05 | Session 4 | Sprint 2 complete — Discover/Communities/Chat/Profile screens, Hinge-style onboarding, expanded profile + compliment flow, tsc clean |

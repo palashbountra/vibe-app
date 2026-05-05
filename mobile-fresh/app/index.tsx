@@ -6,6 +6,7 @@ export default function Index() {
 
   if (!isAuthenticated) return <Redirect href="/(auth)/welcome" />;
   if (!user?.username) return <Redirect href="/(onboarding)/setup-profile" />;
+  if (!user?.gender) return <Redirect href="/(onboarding)/setup-profile-details" />;
   if (!isMusicConnected) return <Redirect href="/(onboarding)/connect-music" />;
   return <Redirect href="/(app)/discover" />;
 }
