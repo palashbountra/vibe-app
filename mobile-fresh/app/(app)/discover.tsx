@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
+import { router } from 'expo-router';
 import { UserCard } from '@/components/cards/UserCard';
 import { matchingService, type FeedCandidate } from '@/services/matchingService';
 
@@ -85,7 +86,11 @@ export default function DiscoverScreen() {
           data={filteredFeed}
           keyExtractor={(u) => u.id}
           renderItem={({ item }) => (
-            <UserCard user={item} onConnect={handleConnect} />
+            <UserCard
+              user={item}
+              onConnect={handleConnect}
+              onPress={() => router.push(`/(app)/user/${item.id}` as any)}
+            />
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
