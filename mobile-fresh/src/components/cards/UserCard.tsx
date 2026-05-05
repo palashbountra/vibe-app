@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Typography } from '@/theme';
@@ -14,7 +13,6 @@ import type { FeedCandidate } from '@/services/matchingService';
 interface UserCardProps {
   user: FeedCandidate;
   onConnect: (userId: string) => void;
-  onPress?: () => void;
 }
 
 const GENRE_COLORS: Record<string, string> = {
@@ -45,13 +43,12 @@ function compatColor(score: number): string {
   return Colors.textSecondary;
 }
 
-export function UserCard({ user, onConnect, onPress }: UserCardProps) {
+export function UserCard({ user, onConnect }: UserCardProps) {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const initial = user.displayName.charAt(0).toUpperCase();
   const avatarBg = user.avatarColor ?? Colors.primary;
-  const hasPhoto = user.photos && user.photos.length > 0;
 
   const handleConnect = async () => {
     if (connected || loading) return;
@@ -62,23 +59,12 @@ export function UserCard({ user, onConnect, onPress }: UserCardProps) {
   };
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.92 : 1}
-    >
-      {/* Header row: avatar/photo + name/age + compat badge */}
+    <View style={styles.card}>
+      {/* Header row: avatar + name/age + compat badge */}
       <View style={styles.header}>
-        {hasPhoto ? (
-          <Image
-            source={{ uri: user.photos![0] }}
-            style={styles.avatar}
-          />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
-          </View>
-        )}
+        <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
+          <Text style={styles.avatarInitial}>{initial}</Text>
+        </View>
 
         <View style={styles.nameBlock}>
           <View style={styles.nameRow}>
@@ -152,15 +138,7 @@ export function UserCard({ user, onConnect, onPress }: UserCardProps) {
           </>
         )}
       </TouchableOpacity>
-
-      {/* Tap hint */}
-      {onPress && (
-        <View style={styles.tapHint}>
-          <Ionicons name="chevron-forward" size={12} color={Colors.textTertiary} />
-          <Text style={styles.tapHintText}>Tap to see full profile</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -304,16 +282,5 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: '#fff',
     fontWeight: '700',
-  },
-  tapHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginTop: 8,
-  },
-  tapHintText: {
-    ...Typography.small,
-    color: Colors.textTertiary,
   },
 });

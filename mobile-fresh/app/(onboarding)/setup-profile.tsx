@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { useAuthStore } from '@/store/authStore';
 
@@ -20,14 +21,10 @@ export default function SetupProfileScreen() {
   const { setUser, user } = useAuthStore();
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [username, setUsername] = useState('');
-  const [age, setAge] = useState('');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
   const usernameRef = useRef<TextInput>(null);
-  const ageRef = useRef<TextInput>(null);
 
-  const ageNum = parseInt(age, 10);
-  const ageValid = ageNum >= 18 && ageNum <= 100;
-  const isValid = displayName.trim().length >= 2 && username.trim().length >= 3 && ageValid;
+  const isValid = displayName.trim().length >= 2 && username.trim().length >= 3;
   const cleanUsername = username.replace(/[^a-z0-9_.]/gi, '').toLowerCase();
 
   const handleContinue = () => {
@@ -38,9 +35,8 @@ export default function SetupProfileScreen() {
       email: user?.email,
       username: cleanUsername,
       avatarColor,
-      age: ageNum,
     });
-    router.replace('/(onboarding)/setup-profile-details');
+    router.replace('/(onboarding)/connect-music');
   };
 
   return (
@@ -113,8 +109,8 @@ export default function SetupProfileScreen() {
                 onChangeText={(t) => setUsername(t.replace(/[^a-z0-9_.]/gi, '').toLowerCase())}
                 placeholder="yourhandle"
                 placeholderTextColor={Colors.textTertiary}
-                returnKeyType="next"
-                onSubmitEditing={() => ageRef.current?.focus()}
+                returnKeyType="done"
+                onSubmitEditing={handleContinue}
                 autoCapitalize="none"
                 autoCorrect={false}
                 maxLength={20}
@@ -123,28 +119,6 @@ export default function SetupProfileScreen() {
             <Text style={styles.hint}>
               Letters, numbers, dots, underscores only
             </Text>
-          </View>
-
-          {/* Age */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Age</Text>
-            <TextInput
-              ref={ageRef}
-              style={styles.input}
-              value={age}
-              onChangeText={(t) => setAge(t.replace(/[^0-9]/g, ''))}
-              placeholder="e.g. 22"
-              placeholderTextColor={Colors.textTertiary}
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-              keyboardType="number-pad"
-              maxLength={3}
-            />
-            {age.length > 0 && !ageValid && (
-              <Text style={[styles.hint, { color: '#EF4444' }]}>
-                Must be 18 or older
-              </Text>
-            )}
           </View>
 
           <TouchableOpacity
