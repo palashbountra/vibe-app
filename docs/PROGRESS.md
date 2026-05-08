@@ -143,3 +143,4 @@ welcome → login → [Apple/Google] → setup-profile → connect-music → /(a
 | 2026-05-02 | Session 2 | GitHub setup, SDK upgrade, fresh project, app booting |
 | 2026-05-05 | Session 3 | Product pivot to social discovery, Sprint 1 auth flow complete |
 | 2026-05-05 | Session 4 | Sprint 2 complete — Discover/Communities/Chat/Profile screens, Hinge-style onboarding, expanded profile + compliment flow, tsc clean |
+| 2026-05-08 | Session 5 | Bug fixes + full button wiring — 6 new modals (ConversationModal, EditProfileModal, SettingsModal, FilterModal, CreateCommunityModal, CommunityDetailModal); fixed isHydrated early-return bug; removed broken music connection routing gate; profile now shows user photo; tsc clean; git pushed + EAS update published |
