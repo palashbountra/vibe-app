@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -15,12 +16,18 @@ import { useAuthStore } from '@/store/authStore';
 import { userService, type UserProfile } from '@/services/userService';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import { SettingsModal } from '@/components/modals/SettingsModal';
+import { UserProfileModal } from '@/components/modals/UserProfileModal';
+import type { FeedCandidate } from '@/services/matchingService';
+
+const SCREEN_W = Dimensions.get('window').width;
+const PHOTO_SIZE = (SCREEN_W - Spacing.lg * 2 - 8) / 3;
 
 export default function ProfileScreen() {
   const { user, isMusicConnected, signOut } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editVisible, setEditVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [viewProfileVisible, setViewProfileVisible] = useState(false);
 
   const loadProfile = () => {
     userService.getMyProfile().then(setProfile);
@@ -40,7 +47,20 @@ export default function ProfileScreen() {
   const topArtists = profile?.topArtists ?? [];
   const topGenres = profile?.topGenres ?? [];
   const currentTrack = profile?.currentTrack;
-  const firstPhoto = user?.photos?.[0] ?? null;
+  // Prefer freshly-loaded profile data — user?.photos can be stale ([] from initSession
+  // won't fall through ?? because [] is truthy).
+  const photos = profile?.photos?.length ? profile.photos : (user?.photos ?? []);
+
+  const myFeedProfile: FeedCandidate | null =
+    profile && user
+      ? {
+          ...profile,
+          id: user.id,
+          photos,
+          compatibilityScore: 100,
+          compatibilityBreakdown: { genre: 1, artist: 1, audio: 1 },
+        }
+      : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -54,8 +74,8 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Avatar + name */}
         <View style={styles.profileTop}>
-          {firstPhoto ? (
-            <Image source={{ uri: firstPhoto }} style={styles.avatar} />
+          {photos.length > 0 ? (
+            <Image source={{ uri: photos[0] }} style={styles.avatar} resizeMode="cover" />
           ) : (
             <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
               <Text style={styles.avatarInitial}>{initial}</Text>
@@ -66,13 +86,29 @@ export default function ProfileScreen() {
           {(user?.bio ?? profile?.bio) && (
             <Text style={styles.bio}>{user?.bio ?? profile?.bio}</Text>
           )}
-          <TouchableOpacity style={styles.editBtn} onPress={() => setEditVisible(true)}>
-            <Ionicons name="pencil-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.editBtnText}>Edit profile</Text>
-          </TouchableOpacity>
+
+          {/* Two-button row */}
+          <View style={styles.profileActions}>
+            <TouchableOpacity
+              style={styles.viewProfileBtn}
+              onPress={() => setViewProfileVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="person-circle-outline" size={15} color={Colors.primary} />
+              <Text style={styles.viewProfileBtnText}>View Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editProfileBtn}
+              onPress={() => setEditVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="pencil-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.editProfileBtnText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Info chips (location, job, etc.) */}
+        {/* Info chips */}
         {(user?.location || user?.job || user?.pronouns) && (
           <View style={styles.infoRow}>
             {user?.pronouns && (
@@ -92,6 +128,23 @@ export default function ProfileScreen() {
                 <Text style={styles.infoChipText}>{user.job}</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Photos grid */}
+        {photos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Photos ({photos.length})</Text>
+            <View style={styles.photoGrid}>
+              {photos.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={styles.photoGridItem}
+                  resizeMode="cover"
+                />
+              ))}
+            </View>
           </View>
         )}
 
@@ -179,6 +232,17 @@ export default function ProfileScreen() {
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
       />
+
+      <UserProfileModal
+        user={myFeedProfile}
+        visible={viewProfileVisible}
+        onClose={() => setViewProfileVisible(false)}
+        isOwnProfile
+        onEditProfile={() => {
+          setViewProfileVisible(false);
+          setEditVisible(true);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -208,6 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.sm,
+    overflow: 'hidden',
   },
   avatarInitial: { fontSize: 40, fontWeight: '700' as const, color: '#fff' },
   name: { ...Typography.h3, color: Colors.textPrimary },
@@ -220,11 +285,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: Spacing.md,
   },
-  editBtn: {
+  profileActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  viewProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    backgroundColor: `${Colors.primary}18`,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}55`,
+  },
+  viewProfileBtnText: { ...Typography.small, color: Colors.primary, fontWeight: '600' as const },
+  editProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     backgroundColor: Colors.surface,
@@ -232,7 +313,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  editBtnText: { ...Typography.small, color: Colors.textSecondary, fontWeight: '500' as const },
+  editProfileBtnText: { ...Typography.small, color: Colors.textSecondary, fontWeight: '500' as const },
   infoRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -259,6 +340,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase' as const,
     letterSpacing: 0.8,
     marginBottom: Spacing.sm,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  photoGridItem: {
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    borderRadius: BorderRadius.md,
   },
   nowPlayingCard: {
     flexDirection: 'row',

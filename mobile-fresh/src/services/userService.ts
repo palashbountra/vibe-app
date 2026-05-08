@@ -117,7 +117,9 @@ export const userService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const ext = localUri.split('.').pop() ?? 'jpg';
+    const rawExt = (localUri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
+    const ext = rawExt || 'jpg';
+    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
     const path = `${user.id}/${index}_${Date.now()}.${ext}`;
 
     const response = await fetch(localUri);
@@ -125,7 +127,7 @@ export const userService = {
 
     const { error } = await supabase.storage
       .from('avatars')
-      .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+      .upload(path, blob, { contentType: mimeType, upsert: true });
 
     if (error) throw error;
 

@@ -14,11 +14,11 @@ WebBrowser.maybeCompleteAuthSession();
 
 const SPOTIFY_CLIENT_ID = process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID ?? '';
 const SPOTIFY_SCOPES = [
-  'user-top-read',              // top artists & tracks (medium + long term)
-  'user-read-recently-played',  // last 50 played tracks
-  'user-read-currently-playing',// live now-playing
-  'user-library-read',          // saved tracks & albums (taste signal)
-  'user-follow-read',           // followed artists (strong taste signal)
+  'user-top-read',
+  'user-read-recently-played',
+  'user-read-currently-playing',
+  'user-library-read',
+  'user-follow-read',
 ];
 const SPOTIFY_DISCOVERY: AuthSession.DiscoveryDocument = {
   authorizationEndpoint: 'https://accounts.spotify.com/authorize',
@@ -30,11 +30,16 @@ export default function ConnectMusicScreen() {
   const [connected, setConnected] = useState<Set<string>>(new Set());
   const [loadingPlatform, setLoadingPlatform] = useState<string | null>(null);
 
-  // Redirect URI — must match the one registered in Spotify dashboard
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'vibeapp',
-    path: 'auth/spotify',
-  });
+  // In Expo Go, makeRedirectUri returns an exp:// URI (custom schemes are ignored).
+  // Register the URI printed in the console below in your Spotify Developer Dashboard.
+  // For simulator: exp://localhost:8081/--/expo-auth-session (run with --localhost flag)
+  // For physical device: use `npx expo start --tunnel` and register the exp://... tunnel URL.
+  const redirectUri = AuthSession.makeRedirectUri(
+    __DEV__
+      ? { preferLocalhost: true }
+      : { scheme: 'vibeapp', path: 'auth/spotify' }
+  );
+  if (__DEV__) console.log('[Spotify OAuth] redirectUri to register in Spotify Dashboard:', redirectUri);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {

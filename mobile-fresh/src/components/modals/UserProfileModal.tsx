@@ -44,9 +44,11 @@ interface UserProfileModalProps {
   user: FeedCandidate | null;
   visible: boolean;
   onClose: () => void;
+  isOwnProfile?: boolean;
+  onEditProfile?: () => void;
 }
 
-export function UserProfileModal({ user, visible, onClose }: UserProfileModalProps) {
+export function UserProfileModal({ user, visible, onClose, isOwnProfile = false, onEditProfile }: UserProfileModalProps) {
   const insets = useSafeAreaInsets();
   const [connected, setConnected] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -125,7 +127,7 @@ export function UserProfileModal({ user, visible, onClose }: UserProfileModalPro
                 ))}
               </ScrollView>
             ) : (
-              <View style={[styles.avatarHero, { backgroundColor: user.avatarColor }]}>
+              <View style={[styles.avatarHero, { backgroundColor: user.avatarColor ?? Colors.primary }]}>
                 <Text style={styles.avatarHeroInitial}>
                   {user.displayName.charAt(0).toUpperCase()}
                 </Text>
@@ -146,11 +148,13 @@ export function UserProfileModal({ user, visible, onClose }: UserProfileModalPro
               <Ionicons name="close" size={20} color="#FFFFFF" />
             </TouchableOpacity>
 
-            {/* Compat badge */}
-            <View style={[styles.compatOverlay, { backgroundColor: compatColor(user.compatibilityScore) }]}>
-              <Ionicons name="musical-notes" size={12} color="#FFFFFF" />
-              <Text style={styles.compatOverlayText}>{user.compatibilityScore}% match</Text>
-            </View>
+            {/* Compat badge — hidden on own profile */}
+            {!isOwnProfile && (
+              <View style={[styles.compatOverlay, { backgroundColor: compatColor(user.compatibilityScore) }]}>
+                <Ionicons name="musical-notes" size={12} color="#FFFFFF" />
+                <Text style={styles.compatOverlayText}>{user.compatibilityScore}% match</Text>
+              </View>
+            )}
           </View>
 
           {/* ── Identity ── */}
@@ -292,23 +296,34 @@ export function UserProfileModal({ user, visible, onClose }: UserProfileModalPro
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* ── Connect action bar ── */}
+        {/* ── Action bar ── */}
         <View style={styles.actionBar}>
-          <TouchableOpacity
-            style={[styles.connectBtn, connected && styles.connectBtnDone]}
-            onPress={handleConnect}
-            activeOpacity={connected ? 1 : 0.85}
-            disabled={connected}
-          >
-            <Ionicons
-              name={connected ? 'checkmark-circle' : 'person-add-outline'}
-              size={20}
-              color="#FFFFFF"
-            />
-            <Text style={styles.connectBtnText}>
-              {connected ? 'Request Sent' : `Connect with ${user.displayName}`}
-            </Text>
-          </TouchableOpacity>
+          {isOwnProfile ? (
+            <TouchableOpacity
+              style={styles.connectBtn}
+              onPress={onEditProfile ?? onClose}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="pencil-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.connectBtnText}>Edit Profile</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.connectBtn, connected && styles.connectBtnDone]}
+              onPress={handleConnect}
+              activeOpacity={connected ? 1 : 0.85}
+              disabled={connected}
+            >
+              <Ionicons
+                name={connected ? 'checkmark-circle' : 'person-add-outline'}
+                size={20}
+                color="#FFFFFF"
+              />
+              <Text style={styles.connectBtnText}>
+                {connected ? 'Request Sent' : `Connect with ${user.displayName}`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

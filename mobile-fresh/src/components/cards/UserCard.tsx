@@ -73,6 +73,7 @@ export function UserCard({ user, onConnect, onPress }: UserCardProps) {
           <Image
             source={{ uri: user.photos![0] }}
             style={styles.avatar}
+            resizeMode="cover"
           />
         ) : (
           <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
@@ -83,15 +84,17 @@ export function UserCard({ user, onConnect, onPress }: UserCardProps) {
         <View style={styles.nameBlock}>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{user.displayName}</Text>
-            <Text style={styles.age}>, {user.age}</Text>
+            {user.age != null && <Text style={styles.age}>, {user.age}</Text>}
           </View>
           {user.username ? (
             <Text style={styles.username}>@{user.username}</Text>
           ) : null}
-          <Text style={styles.location}>
-            <Ionicons name="location-outline" size={11} color={Colors.textTertiary} />{' '}
-            {user.location}
-          </Text>
+          {user.location ? (
+            <Text style={styles.location}>
+              <Ionicons name="location-outline" size={11} color={Colors.textTertiary} />{' '}
+              {user.location}
+            </Text>
+          ) : null}
         </View>
 
         {/* Compatibility badge */}
@@ -168,7 +171,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: Spacing.md,
     gap: Spacing.md,
   },
@@ -179,6 +182,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
   },
   avatarInitial: {
     fontSize: 26,
