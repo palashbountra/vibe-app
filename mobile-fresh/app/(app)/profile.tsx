@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -12,13 +13,21 @@ import { router } from 'expo-router';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { useAuthStore } from '@/store/authStore';
 import { userService, type UserProfile } from '@/services/userService';
+import { EditProfileModal } from '@/components/modals/EditProfileModal';
+import { SettingsModal } from '@/components/modals/SettingsModal';
 
 export default function ProfileScreen() {
   const { user, isMusicConnected, signOut } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [editVisible, setEditVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+
+  const loadProfile = () => {
+    userService.getMyProfile().then(setProfile);
+  };
 
   useEffect(() => {
-    userService.getMyProfile().then(setProfile);
+    loadProfile();
   }, []);
 
   const handleSignOut = () => {
@@ -31,12 +40,13 @@ export default function ProfileScreen() {
   const topArtists = profile?.topArtists ?? [];
   const topGenres = profile?.topGenres ?? [];
   const currentTrack = profile?.currentTrack;
+  const firstPhoto = user?.photos?.[0] ?? null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => setSettingsVisible(true)}>
           <Ionicons name="settings-outline" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -44,17 +54,46 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Avatar + name */}
         <View style={styles.profileTop}>
-          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
-          </View>
+          {firstPhoto ? (
+            <Image source={{ uri: firstPhoto }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+              <Text style={styles.avatarInitial}>{initial}</Text>
+            </View>
+          )}
           <Text style={styles.name}>{user?.displayName ?? 'Your Name'}</Text>
           {user?.username && <Text style={styles.username}>@{user.username}</Text>}
-          {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-          <TouchableOpacity style={styles.editBtn}>
+          {(user?.bio ?? profile?.bio) && (
+            <Text style={styles.bio}>{user?.bio ?? profile?.bio}</Text>
+          )}
+          <TouchableOpacity style={styles.editBtn} onPress={() => setEditVisible(true)}>
             <Ionicons name="pencil-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.editBtnText}>Edit profile</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Info chips (location, job, etc.) */}
+        {(user?.location || user?.job || user?.pronouns) && (
+          <View style={styles.infoRow}>
+            {user?.pronouns && (
+              <View style={styles.infoChip}>
+                <Text style={styles.infoChipText}>{user.pronouns}</Text>
+              </View>
+            )}
+            {user?.location && (
+              <View style={styles.infoChip}>
+                <Ionicons name="location-outline" size={12} color={Colors.textTertiary} />
+                <Text style={styles.infoChipText}>{user.location}</Text>
+              </View>
+            )}
+            {user?.job && (
+              <View style={styles.infoChip}>
+                <Ionicons name="briefcase-outline" size={12} color={Colors.textTertiary} />
+                <Text style={styles.infoChipText}>{user.job}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Now Playing */}
         {currentTrack && (
@@ -129,6 +168,17 @@ export default function ProfileScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <EditProfileModal
+        visible={editVisible}
+        onClose={() => setEditVisible(false)}
+        onSaved={loadProfile}
+      />
+
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -159,10 +209,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.sm,
   },
-  avatarInitial: { fontSize: 40, fontWeight: '700', color: '#fff' },
+  avatarInitial: { fontSize: 40, fontWeight: '700' as const, color: '#fff' },
   name: { ...Typography.h3, color: Colors.textPrimary },
   username: { ...Typography.body, color: Colors.primary },
-  bio: { ...Typography.caption, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginTop: 4 },
+  bio: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 4,
+    paddingHorizontal: Spacing.md,
+  },
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -175,12 +232,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  editBtnText: { ...Typography.small, color: Colors.textSecondary, fontWeight: '500' },
+  editBtnText: { ...Typography.small, color: Colors.textSecondary, fontWeight: '500' as const },
+  infoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  infoChipText: { ...Typography.small, color: Colors.textSecondary },
   section: { marginBottom: Spacing.xl },
   sectionTitle: {
-    ...Typography.caption,
+    ...Typography.small,
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.8,
     marginBottom: Spacing.sm,
   },
@@ -210,7 +286,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${Colors.primary}44`,
   },
-  genreText: { ...Typography.small, color: Colors.primary, fontWeight: '600' },
+  genreText: { ...Typography.small, color: Colors.primary, fontWeight: '600' as const },
   artistRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${Colors.spotify}22`,
     borderRadius: BorderRadius.full,
   },
-  connectedText: { ...Typography.small, color: Colors.spotify, fontWeight: '600' },
+  connectedText: { ...Typography.small, color: Colors.spotify, fontWeight: '600' as const },
   connectPrompt: {
     flexDirection: 'row',
     alignItems: 'center',

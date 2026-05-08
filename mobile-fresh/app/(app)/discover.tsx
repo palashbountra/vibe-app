@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { UserCard } from '@/components/cards/UserCard';
 import { UserProfileModal } from '@/components/modals/UserProfileModal';
+import { FilterModal, type DiscoverFilters, DEFAULT_FILTERS } from '@/components/modals/FilterModal';
 import { matchingService, type FeedCandidate } from '@/services/matchingService';
 
 const FILTERS = ['All', 'Nearby', 'High Match', 'Online'];
@@ -23,6 +24,13 @@ export default function DiscoverScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedUser, setSelectedUser] = useState<FeedCandidate | null>(null);
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<DiscoverFilters>(DEFAULT_FILTERS);
+
+  const hasAdvancedFilters =
+    advancedFilters.genres.length > 0 ||
+    advancedFilters.minAge !== DEFAULT_FILTERS.minAge ||
+    advancedFilters.maxAge !== DEFAULT_FILTERS.maxAge;
 
   const loadFeed = useCallback(async () => {
     const data = await matchingService.getFeed();
@@ -43,8 +51,17 @@ export default function DiscoverScreen() {
   };
 
   const filteredFeed = feed.filter((u) => {
-    if (activeFilter === 'High Match') return u.compatibilityScore >= 80;
-    if (activeFilter === 'Online') return !!u.currentTrack;
+    // Tab-level filters
+    if (activeFilter === 'High Match' && u.compatibilityScore < 80) return false;
+    if (activeFilter === 'Online' && !u.currentTrack) return false;
+    // Advanced filters
+    if (advancedFilters.genres.length > 0) {
+      const hasMatch = u.topGenres.some((g) => advancedFilters.genres.includes(g));
+      if (!hasMatch) return false;
+    }
+    if (u.age) {
+      if (u.age < advancedFilters.minAge || u.age > advancedFilters.maxAge) return false;
+    }
     return true;
   });
 
@@ -56,8 +73,16 @@ export default function DiscoverScreen() {
           <Text style={styles.title}>Discover</Text>
           <Text style={styles.subtitle}>People near you</Text>
         </View>
-        <TouchableOpacity style={styles.filterBtn}>
-          <Ionicons name="options-outline" size={20} color={Colors.textSecondary} />
+        <TouchableOpacity
+          style={[styles.filterBtn, hasAdvancedFilters && styles.filterBtnActive]}
+          onPress={() => setFilterVisible(true)}
+        >
+          <Ionicons
+            name="options-outline"
+            size={20}
+            color={hasAdvancedFilters ? Colors.primary : Colors.textSecondary}
+          />
+          {hasAdvancedFilters && <View style={styles.filterDot} />}
         </TouchableOpacity>
       </View>
 
@@ -106,7 +131,19 @@ export default function DiscoverScreen() {
             <View style={styles.empty}>
               <Ionicons name="compass-outline" size={64} color={Colors.surface2} />
               <Text style={styles.emptyTitle}>No one here yet</Text>
-              <Text style={styles.emptySub}>Try a different filter or check back later</Text>
+              <Text style={styles.emptySub}>
+                {hasAdvancedFilters
+                  ? 'Try adjusting your filters'
+                  : 'Try a different filter or check back later'}
+              </Text>
+              {hasAdvancedFilters && (
+                <TouchableOpacity
+                  style={styles.clearFiltersBtn}
+                  onPress={() => setAdvancedFilters(DEFAULT_FILTERS)}
+                >
+                  <Text style={styles.clearFiltersText}>Clear filters</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
           ListFooterComponent={
@@ -126,6 +163,13 @@ export default function DiscoverScreen() {
         user={selectedUser}
         visible={selectedUser !== null}
         onClose={() => setSelectedUser(null)}
+      />
+
+      <FilterModal
+        visible={filterVisible}
+        filters={advancedFilters}
+        onApply={setAdvancedFilters}
+        onClose={() => setFilterVisible(false)}
       />
     </SafeAreaView>
   );
@@ -153,6 +197,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  filterBtnActive: {
+    borderColor: Colors.primary + '88',
+    backgroundColor: Colors.primary + '15',
+  },
+  filterDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Colors.primary,
+    borderWidth: 1.5,
+    borderColor: Colors.background,
+  },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
@@ -171,14 +230,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  chipText: { ...Typography.small, color: Colors.textSecondary, fontWeight: '500' },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
+  chipText: { ...Typography.small, color: Colors.textSecondary, fontWeight: '500' as const },
+  chipTextActive: { color: '#fff', fontWeight: '700' as const },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xxl },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   empty: { alignItems: 'center', paddingTop: Spacing.xxl, gap: Spacing.sm },
   emptyTitle: { ...Typography.h3, color: Colors.textTertiary, marginTop: Spacing.md },
   emptySub: { ...Typography.caption, color: Colors.textTertiary },
+  clearFiltersBtn: {
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary + '22',
+  },
+  clearFiltersText: { ...Typography.caption, color: Colors.primary, fontWeight: '600' as const },
   footer: { alignItems: 'center', paddingVertical: Spacing.xl, gap: Spacing.sm },
   footerText: { ...Typography.caption, color: Colors.textTertiary },
-  footerRefresh: { ...Typography.caption, color: Colors.primary, fontWeight: '600' },
+  footerRefresh: { ...Typography.caption, color: Colors.primary, fontWeight: '600' as const },
 });

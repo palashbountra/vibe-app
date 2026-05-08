@@ -5,10 +5,12 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
+import { ConversationModal } from '@/components/modals/ConversationModal';
 import { matchingService, type Connection } from '@/services/matchingService';
 
 function timeAgo(iso: string): string {
@@ -21,17 +23,16 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}d`;
 }
 
-function ConnectionRow({ conn }: { conn: Connection }) {
+function ConnectionRow({ conn, onPress }: { conn: Connection; onPress: () => void }) {
   const initial = conn.user.displayName.charAt(0).toUpperCase();
   const avatarBg = conn.user.avatarColor ?? Colors.primary;
   const hasUnread = conn.unreadCount > 0;
 
   return (
-    <TouchableOpacity style={styles.row} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
       {/* Avatar */}
       <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
         <Text style={styles.avatarInitial}>{initial}</Text>
-        {/* Online indicator */}
         {conn.user.currentTrack && <View style={styles.onlineDot} />}
       </View>
 
@@ -60,7 +61,6 @@ function ConnectionRow({ conn }: { conn: Connection }) {
           )}
         </View>
 
-        {/* Now playing strip */}
         {conn.user.currentTrack && (
           <Text style={styles.nowPlaying} numberOfLines={1}>
             🎵 {conn.user.currentTrack.title} · {conn.user.currentTrack.artist}
@@ -74,6 +74,7 @@ function ConnectionRow({ conn }: { conn: Connection }) {
 export default function ChatScreen() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
 
   useEffect(() => {
     matchingService.getConnections().then((data) => {
@@ -82,11 +83,19 @@ export default function ChatScreen() {
     });
   }, []);
 
+  const handleNewMessage = () => {
+    Alert.alert(
+      'New Message',
+      'Go to Discover to connect with someone first, then start chatting here!',
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={handleNewMessage}>
           <Ionicons name="create-outline" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -95,18 +104,31 @@ export default function ChatScreen() {
         <View style={styles.empty}>
           <Ionicons name="chatbubbles-outline" size={64} color={Colors.surface2} />
           <Text style={styles.emptyTitle}>No messages yet</Text>
-          <Text style={styles.emptySub}>Connect with someone on Discover to start chatting</Text>
+          <Text style={styles.emptySub}>
+            Connect with someone on Discover to start chatting
+          </Text>
         </View>
       ) : (
         <FlatList
           data={connections}
           keyExtractor={(c) => c.connectionId}
-          renderItem={({ item }) => <ConnectionRow conn={item} />}
+          renderItem={({ item }) => (
+            <ConnectionRow
+              conn={item}
+              onPress={() => setSelectedConnection(item)}
+            />
+          )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
+
+      <ConversationModal
+        connection={selectedConnection}
+        visible={selectedConnection !== null}
+        onClose={() => setSelectedConnection(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -127,6 +149,10 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   list: { paddingBottom: Spacing.xxl },
   row: {
@@ -169,7 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   rowName: { ...Typography.bodyMedium, color: Colors.textSecondary },
-  rowNameBold: { color: Colors.textPrimary, fontWeight: '700' },
+  rowNameBold: { color: Colors.textPrimary, fontWeight: '700' as const },
   rowTime: { ...Typography.small, color: Colors.textTertiary },
   rowBottom: {
     flexDirection: 'row',
@@ -181,7 +207,7 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     flex: 1,
   },
-  rowPreviewBold: { color: Colors.textSecondary, fontWeight: '600' },
+  rowPreviewBold: { color: Colors.textSecondary, fontWeight: '600' as const },
   unreadBadge: {
     backgroundColor: Colors.primary,
     borderRadius: 10,
@@ -192,7 +218,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     marginLeft: Spacing.sm,
   },
-  unreadText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  unreadText: { fontSize: 11, fontWeight: '700' as const, color: '#fff' },
   nowPlaying: {
     ...Typography.small,
     color: Colors.textTertiary,
@@ -212,5 +238,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   emptyTitle: { ...Typography.h3, color: Colors.textTertiary, marginTop: Spacing.md },
-  emptySub: { ...Typography.caption, color: Colors.textTertiary, textAlign: 'center', lineHeight: 20 },
+  emptySub: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });

@@ -95,8 +95,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .single();
 
     if (!profile) {
-      // Authenticated but no profile yet — just mark as authenticated
-      set({ isAuthenticated: true, accessToken: session.access_token });
+      // Authenticated but no profile yet — mark hydrated so index.tsx can route to onboarding
+      set({ isAuthenticated: true, isHydrated: true, accessToken: session.access_token });
       return;
     }
 
