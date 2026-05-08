@@ -30,16 +30,13 @@ export default function ConnectMusicScreen() {
   const [connected, setConnected] = useState<Set<string>>(new Set());
   const [loadingPlatform, setLoadingPlatform] = useState<string | null>(null);
 
-  // In Expo Go, makeRedirectUri returns an exp:// URI (custom schemes are ignored).
-  // Register the URI printed in the console below in your Spotify Developer Dashboard.
-  // For simulator: exp://localhost:8081/--/expo-auth-session (run with --localhost flag)
-  // For physical device: use `npx expo start --tunnel` and register the exp://... tunnel URL.
+  // In Expo Go, makeRedirectUri returns an exp:// URI based on the current Metro host.
+  // Run `npx expo start --tunnel` so the URI is stable (tunnel URL, not a local IP).
+  // The exact URI is logged below — register it once in your Spotify Developer Dashboard.
   const redirectUri = AuthSession.makeRedirectUri(
-    __DEV__
-      ? { preferLocalhost: true }
-      : { scheme: 'vibeapp', path: 'auth/spotify' }
+    __DEV__ ? {} : { scheme: 'vibeapp', path: 'auth/spotify' }
   );
-  if (__DEV__) console.log('[Spotify OAuth] redirectUri to register in Spotify Dashboard:', redirectUri);
+  if (__DEV__) console.log('[Spotify OAuth] Register this URI in Spotify Dashboard:', redirectUri);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {

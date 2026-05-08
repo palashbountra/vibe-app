@@ -122,12 +122,20 @@ export const userService = {
     const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
     const path = `${user.id}/${index}_${Date.now()}.${ext}`;
 
-    const response = await fetch(localUri);
-    const blob = await response.blob();
+    // fetch().blob() returns 0 bytes for local file URIs in React Native.
+    // XHR with responseType 'arraybuffer' reads local files correctly.
+    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = () => resolve(xhr.response as ArrayBuffer);
+      xhr.onerror = () => reject(new Error('Failed to read image file'));
+      xhr.responseType = 'arraybuffer';
+      xhr.open('GET', localUri);
+      xhr.send();
+    });
 
     const { error } = await supabase.storage
       .from('avatars')
-      .upload(path, blob, { contentType: mimeType, upsert: true });
+      .upload(path, arrayBuffer, { contentType: mimeType, upsert: true });
 
     if (error) throw error;
 
