@@ -28,6 +28,7 @@ export interface User {
 interface AuthState {
   isAuthenticated: boolean;
   isMusicConnected: boolean;
+  isHydrated: boolean;
   user: User | null;
   accessToken: string | null;
 
@@ -61,6 +62,7 @@ export function calcProfileCompletion(user: User): number {
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isMusicConnected: false,
+  isHydrated: false,
   user: null,
   accessToken: null,
 
@@ -80,7 +82,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   initSession: async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!session) {
+      set({ isHydrated: true });
+      return;
+    }
 
     // Load profile
     const { data: profile } = await supabase
@@ -136,6 +141,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({
       isAuthenticated: true,
+      isHydrated: true,
       accessToken: session.access_token,
       isMusicConnected: (musicConn?.length ?? 0) > 0,
       user,

@@ -21,7 +21,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D0D0D"
       },
-      "package": "com.vibeapp.vibe"
+      "package": "com.vibeapp.vibe",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -34,6 +38,20 @@
         }
       ],
       "expo-web-browser"
-    ]
+    ],
+    "platforms": ["ios", "android"],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a6706010-19c7-489f-92e7-688849ba1d68"
+      }
+    },
+    "owner": "palashbountra",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a6706010-19c7-489f-92e7-688849ba1d68"
+    }
   }
 }

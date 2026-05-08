@@ -14,9 +14,11 @@ WebBrowser.maybeCompleteAuthSession();
 
 const SPOTIFY_CLIENT_ID = process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID ?? '';
 const SPOTIFY_SCOPES = [
-  'user-top-read',
-  'user-read-recently-played',
-  'user-read-currently-playing',
+  'user-top-read',              // top artists & tracks (medium + long term)
+  'user-read-recently-played',  // last 50 played tracks
+  'user-read-currently-playing',// live now-playing
+  'user-library-read',          // saved tracks & albums (taste signal)
+  'user-follow-read',           // followed artists (strong taste signal)
 ];
 const SPOTIFY_DISCOVERY: AuthSession.DiscoveryDocument = {
   authorizationEndpoint: 'https://accounts.spotify.com/authorize',

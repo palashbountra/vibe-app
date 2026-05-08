@@ -58,3 +58,7 @@ logs/
 coverage/
 .nyc_output/
 .env
+
+# ─── Scratch files ────────────────────────────────────────────────────────────
+src/lib/_test_types.ts
+mobile-fresh/src/lib/_test_types.ts
