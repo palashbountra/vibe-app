@@ -97,7 +97,7 @@ function CompletionBar({ pct }: { pct: number }) {
 
 export default function SetupProfileDetailsScreen() {
   const { user, setUser } = useAuthStore();
-  const [photos, setPhotos] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined, undefined, undefined]);
+  const [photos, setPhotos] = useState<({ uri: string; base64: string } | undefined)[]>([undefined, undefined, undefined, undefined, undefined, undefined]);
   const [gender, setGender] = useState('');
   const [pronouns, setPronouns] = useState('');
   const [bio, setBio] = useState('');
@@ -115,12 +115,12 @@ export default function SetupProfileDetailsScreen() {
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const filledPhotos = photos.filter(Boolean) as string[];
+  const filledPhotos = photos.filter(Boolean) as { uri: string; base64: string }[];
   const completion = calcProfileCompletion({
     ...user!,
     age: user?.age ?? 0,
     gender,
-    photos: filledPhotos,
+    photos: filledPhotos.map(p => p.uri),
     bio,
     prompts,
     job,
@@ -139,11 +139,13 @@ export default function SetupProfileDetailsScreen() {
       quality: 0.8,
       allowsEditing: true,
       aspect: [3, 4],
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
       setPhotos((prev) => {
         const next = [...prev];
-        next[index] = result.assets[0].uri;
+        next[index] = { uri: asset.uri, base64: asset.base64 ?? '' };
         return next;
       });
     }
@@ -169,12 +171,11 @@ export default function SetupProfileDetailsScreen() {
       // Upload local photos to Supabase Storage, get CDN URLs
       const uploadedUrls: string[] = [];
       for (let i = 0; i < filledPhotos.length; i++) {
-        const localUri = filledPhotos[i];
-        // If already a CDN URL (reconnect case), keep as-is
-        if (localUri.startsWith('http')) {
-          uploadedUrls.push(localUri);
+        const photo = filledPhotos[i];
+        if (photo.uri.startsWith('http')) {
+          uploadedUrls.push(photo.uri);
         } else {
-          const url = await userService.uploadPhoto(localUri, i);
+          const url = await userService.uploadPhoto(photo.base64, i);
           uploadedUrls.push(url);
         }
       }
@@ -238,8 +239,8 @@ export default function SetupProfileDetailsScreen() {
         <Text style={styles.sectionTitle}>Photos</Text>
         <Text style={styles.sectionSub}>Add at least 1 photo. Up to 6.</Text>
         <View style={styles.photoGrid}>
-          {photos.map((uri, i) => (
-            <PhotoSlot key={i} uri={uri} index={i} onPick={pickPhoto} onRemove={removePhoto} />
+          {photos.map((photo, i) => (
+            <PhotoSlot key={i} uri={photo?.uri} index={i} onPick={pickPhoto} onRemove={removePhoto} />
           ))}
         </View>
 

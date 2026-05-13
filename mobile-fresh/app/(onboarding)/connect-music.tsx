@@ -31,12 +31,13 @@ export default function ConnectMusicScreen() {
   const [loadingPlatform, setLoadingPlatform] = useState<string | null>(null);
 
   // In Expo Go, makeRedirectUri returns an exp:// URI based on the current Metro host.
-  // Run `npx expo start --tunnel` so the URI is stable (tunnel URL, not a local IP).
-  // The exact URI is logged below — register it once in your Spotify Developer Dashboard.
+  // Run `npx expo start --lan` (NOT --tunnel — tunnel URLs change every restart).
+  // The URI is exp://[your-local-IP]:8081 — register it once in Spotify Developer Dashboard.
+  // If you get a redirect_uri mismatch error, tap the (i) button on the Spotify card to see
+  // the exact URI to register.
   const redirectUri = AuthSession.makeRedirectUri(
     __DEV__ ? {} : { scheme: 'vibeapp', path: 'auth/spotify' }
   );
-  if (__DEV__) console.log('[Spotify OAuth] Register this URI in Spotify Dashboard:', redirectUri);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -66,7 +67,14 @@ export default function ConnectMusicScreen() {
         })
         .finally(() => setLoadingPlatform(null));
     } else if (response?.type === 'error') {
-      Alert.alert('Spotify Error', response.error?.message ?? 'Authorization failed.');
+      const errMsg = response.error?.message ?? 'Authorization failed.';
+      const isRedirectMismatch = errMsg.toLowerCase().includes('redirect') || errMsg.toLowerCase().includes('mismatch');
+      Alert.alert(
+        'Spotify Error',
+        isRedirectMismatch && __DEV__
+          ? `Redirect URI mismatch. Register this URI in your Spotify Developer Dashboard:\n\n${redirectUri}`
+          : errMsg
+      );
       setLoadingPlatform(null);
     } else if (response?.type === 'cancel' || response?.type === 'dismiss') {
       setLoadingPlatform(null);
@@ -75,8 +83,13 @@ export default function ConnectMusicScreen() {
 
   const handleConnectSpotify = () => {
     if (connected.has('spotify') || loadingPlatform) return;
+    if (__DEV__) console.log('[Spotify] Redirect URI to register in Spotify Dashboard:', redirectUri);
     setLoadingPlatform('spotify');
     promptAsync().catch(() => setLoadingPlatform(null));
+  };
+
+  const showRedirectUri = () => {
+    Alert.alert('Spotify Redirect URI', `Register this in your Spotify Developer Dashboard:\n\n${redirectUri}`, [{ text: 'OK' }]);
   };
 
   // Apple Music + YouTube Music — placeholders for now
@@ -136,35 +149,41 @@ export default function ConnectMusicScreen() {
             const isConnected = connected.has(platform.id);
             const isLoading = loadingPlatform === platform.id;
             return (
-              <View
-                key={platform.id}
-                style={[styles.card, isConnected && { borderColor: platform.accentColor }]}
-              >
-                <View style={styles.cardLeft}>
-                  {platform.icon}
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.platformName}>{platform.name}</Text>
-                    <Text style={styles.platformDesc}>{platform.description}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.connectBtn,
-                    isConnected && { backgroundColor: platform.accentColor, borderColor: platform.accentColor },
-                    (isLoading || (loadingPlatform !== null && !isLoading)) && styles.connectBtnDisabled,
-                  ]}
-                  onPress={platform.onConnect}
-                  activeOpacity={0.8}
-                  disabled={isConnected || isLoading || loadingPlatform !== null}
+              <View key={platform.id}>
+                <View
+                  style={[styles.card, isConnected && { borderColor: platform.accentColor }]}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={Colors.textPrimary} />
-                  ) : (
-                    <Text style={[styles.connectBtnText, isConnected && { color: '#000000' }]}>
-                      {isConnected ? 'Connected ✓' : 'Connect'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  <View style={styles.cardLeft}>
+                    {platform.icon}
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.platformName}>{platform.name}</Text>
+                      <Text style={styles.platformDesc}>{platform.description}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.connectBtn,
+                      isConnected && { backgroundColor: platform.accentColor, borderColor: platform.accentColor },
+                      (isLoading || (loadingPlatform !== null && !isLoading)) && styles.connectBtnDisabled,
+                    ]}
+                    onPress={platform.onConnect}
+                    activeOpacity={0.8}
+                    disabled={isConnected || isLoading || loadingPlatform !== null}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={Colors.textPrimary} />
+                    ) : (
+                      <Text style={[styles.connectBtnText, isConnected && { color: '#000000' }]}>
+                        {isConnected ? 'Connected ✓' : 'Connect'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {__DEV__ && platform.id === 'spotify' && (
+                  <TouchableOpacity onPress={showRedirectUri} style={styles.devHint}>
+                    <Text style={styles.devHintText}>ⓘ  Getting a redirect error? Tap to see URI to register in Spotify Dashboard</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           })}
@@ -300,5 +319,14 @@ const styles = StyleSheet.create({
   skipText: {
     ...Typography.body,
     color: Colors.textSecondary,
+  },
+  devHint: {
+    paddingTop: 6,
+    paddingHorizontal: 4,
+  },
+  devHintText: {
+    ...Typography.small,
+    color: Colors.textTertiary,
+    lineHeight: 16,
   },
 });

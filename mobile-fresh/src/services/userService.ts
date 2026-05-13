@@ -113,29 +113,23 @@ export const userService = {
     );
   },
 
-  uploadPhoto: async (localUri: string, index: number): Promise<string> => {
+  uploadPhoto: async (base64: string, index: number): Promise<string> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const rawExt = (localUri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
-    const ext = rawExt || 'jpg';
-    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-    const path = `${user.id}/${index}_${Date.now()}.${ext}`;
+    const path = `${user.id}/${index}_${Date.now()}.jpg`;
 
-    // fetch().blob() returns 0 bytes for local file URIs in React Native.
-    // XHR with responseType 'arraybuffer' reads local files correctly.
-    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = () => resolve(xhr.response as ArrayBuffer);
-      xhr.onerror = () => reject(new Error('Failed to read image file'));
-      xhr.responseType = 'arraybuffer';
-      xhr.open('GET', localUri);
-      xhr.send();
-    });
+    // Decode base64 string (from ImagePicker's base64 option) to Uint8Array for upload.
+    // This avoids the 0-byte bug from reading local file:// URIs in React Native.
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
 
     const { error } = await supabase.storage
       .from('avatars')
-      .upload(path, arrayBuffer, { contentType: mimeType, upsert: true });
+      .upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
 
     if (error) throw error;
 
