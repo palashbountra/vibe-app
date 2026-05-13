@@ -148,4 +148,36 @@ export const userService = {
       urls.map((url, i) => ({ user_id: user.id, url, order: i }))
     );
   },
+
+  deleteAccount: async (): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Delete storage files
+    const { data: storageFiles } = await supabase.storage
+      .from('avatars')
+      .list(user.id);
+    if (storageFiles && storageFiles.length > 0) {
+      await supabase.storage
+        .from('avatars')
+        .remove(storageFiles.map(f => `${user.id}/${f.name}`));
+    }
+
+    // Delete all user rows from tables (order matters: leaf tables first)
+    await Promise.all([
+      supabase.from('photos').delete().eq('user_id', user.id),
+      supabase.from('prompts').delete().eq('user_id', user.id),
+      supabase.from('top_artists').delete().eq('user_id', user.id),
+      supabase.from('top_genres').delete().eq('user_id', user.id),
+      supabase.from('current_tracks').delete().eq('user_id', user.id),
+      supabase.from('music_connections').delete().eq('user_id', user.id),
+    ]);
+    await supabase.from('connections').delete()
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+    await supabase.from('profiles').delete().eq('id', user.id);
+
+    // Sign out — auth account persists but profile is gone,
+    // so next login routes back through onboarding
+    await supabase.auth.signOut();
+  },
 };

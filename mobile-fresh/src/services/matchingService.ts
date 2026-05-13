@@ -50,8 +50,9 @@ function computeScore(
 
 export const matchingService = {
   getFeed: async (): Promise<FeedCandidate[]> => {
+    try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) return SEED_MOCK_FEED;
 
     // Load my own music taste for scoring
     const [myArtistsRes, myGenresRes] = await Promise.all([
@@ -152,6 +153,9 @@ export const matchingService = {
 
     // Sort by compatibility score descending
     return feed.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+    } catch {
+      return SEED_MOCK_FEED;
+    }
   },
 
   sendConnectionRequest: async (

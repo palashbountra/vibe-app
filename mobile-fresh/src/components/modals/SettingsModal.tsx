@@ -8,10 +8,14 @@ import {
   Switch,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
+import { userService } from '@/services/userService';
+import { useAuthStore } from '@/store/authStore';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -20,9 +24,38 @@ interface SettingsModalProps {
 
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const insets = useSafeAreaInsets();
+  const { signOut } = useAuthStore();
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(false);
   const [discoverVisible, setDiscoverVisible] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently wipe all your data — profile, photos, music connections, and chat history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await userService.deleteAccount();
+              signOut();
+              onClose();
+              router.replace('/(auth)/welcome');
+            } catch (e) {
+              Alert.alert('Error', 'Could not delete account. Please try again.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Modal
@@ -120,6 +153,22 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             </TouchableOpacity>
           </View>
 
+          <Text style={styles.sectionLabel}>Danger Zone</Text>
+          <View style={styles.card}>
+            <TouchableOpacity onPress={handleDeleteAccount} disabled={deleting}>
+              <SettingRow
+                icon="trash-outline"
+                label={deleting ? 'Deleting…' : 'Delete Account'}
+                right={
+                  deleting
+                    ? <ActivityIndicator size="small" color={Colors.error} />
+                    : <Ionicons name="chevron-forward" size={16} color={Colors.error} />
+                }
+                danger
+              />
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.version}>Vibe v1.0.0 · beta</Text>
         </ScrollView>
       </View>
@@ -131,16 +180,18 @@ function SettingRow({
   icon,
   label,
   right,
+  danger,
 }: {
   icon: string;
   label: string;
   right: React.ReactNode;
+  danger?: boolean;
 }) {
   return (
     <View style={rowStyles.row}>
       <View style={rowStyles.left}>
-        <Ionicons name={icon as any} size={20} color={Colors.textSecondary} />
-        <Text style={rowStyles.label}>{label}</Text>
+        <Ionicons name={icon as any} size={20} color={danger ? Colors.error : Colors.textSecondary} />
+        <Text style={[rowStyles.label, danger && { color: Colors.error }]}>{label}</Text>
       </View>
       {right}
     </View>
