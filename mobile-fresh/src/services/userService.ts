@@ -3,6 +3,7 @@
  * All calls go to Supabase. Mock data removed.
  */
 import { supabase } from '@/lib/supabase';
+import { authStorage } from '@/services/authStorage';
 import type { Prompt } from '@/store/authStore';
 
 export interface UserProfile {
@@ -153,7 +154,7 @@ export const userService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Delete storage files
+    // Delete storage files (photos bucket)
     const { data: storageFiles } = await supabase.storage
       .from('avatars')
       .list(user.id);
@@ -163,7 +164,21 @@ export const userService = {
         .remove(storageFiles.map(f => `${user.id}/${f.name}`));
     }
 
-    // Delete all user rows from tables (order matters: leaf tables first)
+    // Get all connection IDs involving this user so we can wipe their messages
+    const { data: userConnections } = await supabase
+      .from('connections')
+      .select('id')
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+
+    const connectionIds = userConnections?.map(c => c.id) ?? [];
+
+    // Delete messages in those connections + any messages sent by this user
+    if (connectionIds.length > 0) {
+      await supabase.from('messages').delete().in('connection_id', connectionIds);
+    }
+    await supabase.from('messages').delete().eq('sender_id', user.id);
+
+    // Delete leaf tables first, then connections, then profile
     await Promise.all([
       supabase.from('photos').delete().eq('user_id', user.id),
       supabase.from('prompts').delete().eq('user_id', user.id),
@@ -176,8 +191,11 @@ export const userService = {
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
     await supabase.from('profiles').delete().eq('id', user.id);
 
-    // Sign out — auth account persists but profile is gone,
-    // so next login routes back through onboarding
+    // Clear saved login so the account doesn't appear on the login screen
+    await authStorage.clearRememberedUser();
+
+    // Sign out — the Supabase auth record persists but without a profile
+    // the user cannot do anything; they'll be routed back through onboarding if they sign in again
     await supabase.auth.signOut();
   },
 };

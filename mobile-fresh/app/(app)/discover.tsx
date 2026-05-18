@@ -14,7 +14,7 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { UserCard } from '@/components/cards/UserCard';
 import { UserProfileModal } from '@/components/modals/UserProfileModal';
 import { FilterModal, type DiscoverFilters, DEFAULT_FILTERS } from '@/components/modals/FilterModal';
-import { matchingService, type FeedCandidate } from '@/services/matchingService';
+import { matchingService, type FeedCandidate, SEED_MOCK_FEED } from '@/services/matchingService';
 
 const FILTERS = ['All', 'Nearby', 'High Match', 'Online'];
 
@@ -33,9 +33,15 @@ export default function DiscoverScreen() {
     advancedFilters.maxAge !== DEFAULT_FILTERS.maxAge;
 
   const loadFeed = useCallback(async () => {
-    const data = await matchingService.getFeed();
-    setFeed(data);
-    setLoading(false);
+    try {
+      const data = await matchingService.getFeed();
+      // If real feed comes back empty for any reason, always show seed profiles
+      setFeed(data.length > 0 ? data : SEED_MOCK_FEED);
+    } catch {
+      setFeed(SEED_MOCK_FEED);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadFeed(); }, []);

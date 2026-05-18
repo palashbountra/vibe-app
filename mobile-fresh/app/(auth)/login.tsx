@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Platform, Alert, ActivityIndicator,
@@ -6,19 +6,22 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-import { makeRedirectUri } from 'expo-auth-session';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
+import { authStorage, type RememberedUser } from '@/services/authStorage';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const { setAuthenticated, setUser } = useAuthStore();
   const [loading, setLoading] = useState<'apple' | 'google' | null>(null);
+  const [rememberedUser, setRememberedUser] = useState<RememberedUser | null>(null);
+
+  useEffect(() => {
+    authStorage.getRememberedUser().then(setRememberedUser);
+  }, []);
 
   // ── Shared: route after any successful auth ─────────────────────────────────
   const routeAfterAuth = async (
@@ -57,7 +60,6 @@ export default function LoginScreen() {
     setLoading('google');
     try {
       const redirectTo = 'exp://localhost';
-      console.log('🔗 redirectTo:', redirectTo);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -67,16 +69,13 @@ export default function LoginScreen() {
       if (error) throw error;
       if (!data.url) throw new Error('No OAuth URL from Supabase');
 
-      // Open Google login in system browser
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
       if (result.type !== 'success') {
-        // User cancelled — no error needed
         setLoading(null);
         return;
       }
 
-      // Supabase redirects back with tokens in the URL hash
       const url = result.url;
       const hash = url.split('#')[1] ?? '';
       const params = new URLSearchParams(hash);
@@ -95,11 +94,17 @@ export default function LoginScreen() {
       if (sessionError) throw sessionError;
       if (!sessionData.user) throw new Error('No user returned');
 
-      await routeAfterAuth(
-        sessionData.user.id,
-        sessionData.user.email,
-        sessionData.user.user_metadata?.full_name as string | undefined,
-      );
+      const displayName = sessionData.user.user_metadata?.full_name as string | undefined;
+      const email = sessionData.user.email ?? '';
+
+      // Save so next visit shows the quick-login card
+      await authStorage.saveRememberedUser({
+        email,
+        displayName: displayName ?? email.split('@')[0],
+        provider: 'google',
+      });
+
+      await routeAfterAuth(sessionData.user.id, email, displayName);
     } catch (e: unknown) {
       const err = e as { message?: string };
       Alert.alert('Sign in failed', err.message ?? 'Something went wrong.');
@@ -108,10 +113,31 @@ export default function LoginScreen() {
     }
   };
 
-  // ── Coming soon placeholder ─────────────────────────────────────────────────
+  const handleForgetAccount = () => {
+    Alert.alert(
+      'Forget this account?',
+      'You\'ll need to sign in again next time. Your account and data stay safe.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Forget',
+          style: 'destructive',
+          onPress: async () => {
+            await authStorage.clearRememberedUser();
+            setRememberedUser(null);
+          },
+        },
+      ]
+    );
+  };
+
   const comingSoon = (label: string) => {
     Alert.alert(label, 'This sign-in method is coming soon!');
   };
+
+  const initials = rememberedUser
+    ? rememberedUser.displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    : '';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -124,7 +150,46 @@ export default function LoginScreen() {
         <Text style={styles.subtitle}>Find people who share your sound</Text>
       </View>
 
-      <View style={styles.options}>
+      {/* ── Remembered user quick-login ────────────────────────────────── */}
+      {rememberedUser ? (
+        <View style={styles.rememberedCard}>
+          <View style={styles.rememberedAvatar}>
+            <Text style={styles.rememberedInitials}>{initials}</Text>
+          </View>
+          <View style={styles.rememberedInfo}>
+            <Text style={styles.rememberedName}>{rememberedUser.displayName}</Text>
+            <Text style={styles.rememberedEmail}>{rememberedUser.email}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.continueBtn, loading === 'google' && styles.btnLoading]}
+            onPress={handleGoogleSignIn}
+            activeOpacity={0.85}
+            disabled={!!loading}
+          >
+            {loading === 'google' ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.continueBtnText}>Continue</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.forgetBtn} onPress={handleForgetAccount}>
+            <Text style={styles.forgetText}>Not you?</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {/* ── Sign-in options ─────────────────────────────────────────────── */}
+      <View style={[styles.options, rememberedUser ? styles.optionsDivided : null]}>
+        {rememberedUser ? (
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or sign in with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        ) : null}
+
         {/* Google — live */}
         <TouchableOpacity
           style={[styles.socialBtn, styles.googleBtn, loading === 'google' && styles.btnLoading]}
@@ -141,12 +206,6 @@ export default function LoginScreen() {
             </>
           )}
         </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
 
         {/* Apple — coming soon (iOS only) */}
         {Platform.OS === 'ios' && (
@@ -202,7 +261,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginTop: Spacing.xl,
-    marginBottom: Spacing.xxl,
+    marginBottom: Spacing.lg,
   },
   title: {
     ...Typography.h1,
@@ -213,8 +272,71 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
   },
+
+  // Remembered user card
+  rememberedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.primary + '55',
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  rememberedAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  rememberedInitials: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  rememberedInfo: {
+    flex: 1,
+  },
+  rememberedName: {
+    ...Typography.bodyMedium,
+    color: Colors.textPrimary,
+  },
+  rememberedEmail: {
+    ...Typography.small,
+    color: Colors.textTertiary,
+  },
+  continueBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  continueBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  forgetBtn: {
+    paddingHorizontal: 4,
+  },
+  forgetText: {
+    ...Typography.small,
+    color: Colors.textTertiary,
+    textDecorationLine: 'underline',
+  },
+
   options: {
     gap: Spacing.sm,
+  },
+  optionsDivided: {
+    marginTop: Spacing.xs,
   },
   socialBtn: {
     height: 56,

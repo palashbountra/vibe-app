@@ -279,7 +279,7 @@ export const matchingService = {
 };
 
 // Seed mock feed — shown when no other real users exist in the DB yet (dev / demo mode)
-const SEED_MOCK_FEED: FeedCandidate[] = [
+export const SEED_MOCK_FEED: FeedCandidate[] = [
   {
     id: 'mock_1',
     displayName: 'Priya Sharma',
